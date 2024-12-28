@@ -1,0 +1,11 @@
+---
+import { getCollection } from "astro:content";
+import SeriesPreview from "../components/SeriesPreview.astro";
+import Html from "../components/Html.astro";
+
+const series = await getCollection("series");
+---
+
+<Html header>
+  {series.map((entry) => <SeriesPreview series={entry} />)}
+</Html>

@@ -1,0 +1,24 @@
+---
+import PrimaryButton from "./PrimaryButton.astro";
+import SecondaryButton from "./SecondaryButton.astro";
+
+interface Props {
+  href: string;
+  color: string;
+  primary?: boolean;
+}
+
+const props = Astro.props;
+---
+
+{
+  props.primary ? (
+    <PrimaryButton {...props}>
+      <slot />
+    </PrimaryButton>
+  ) : (
+    <SecondaryButton {...props}>
+      <slot />
+    </SecondaryButton>
+  )
+}

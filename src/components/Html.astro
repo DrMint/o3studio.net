@@ -1,0 +1,103 @@
+---
+import { Image } from "astro:assets";
+import logo from "../images/o3-studio.png";
+
+interface Props {
+  header?: boolean;
+}
+
+const { header = false } = Astro.props;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <title>O₃ Studio</title>
+  </head>
+  <body>
+    {
+      header && (
+        <header>
+          <a href="/">
+            <Image src={logo} alt="O₃ studio's logo" />
+          </a>
+        </header>
+      )
+    }
+    <slot />
+  </body>
+</html>
+
+<style is:global>
+  @font-face {
+    font-family: "Noto";
+    font-weight: 400;
+    font-style: normal;
+    src: url("/fonts/NotoSans-Regular.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Noto";
+    font-weight: 500;
+    font-style: normal;
+    src: url("/fonts/NotoSans-Medium.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Noto";
+    font-weight: 600;
+    font-style: normal;
+    src: url("/fonts/NotoSans-Bold.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Noto";
+    font-weight: 700;
+    font-style: normal;
+    src: url("/fonts/NotoSans-ExtraBold.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Noto";
+    font-weight: 800;
+    font-style: normal;
+    src: url("/fonts/NotoSans-Black.woff2") format("woff2");
+  }
+
+  body {
+    font-family: "Noto";
+    font-weight: 500;
+  }
+</style>
+
+<style>
+  html {
+    background-image: url("/paper2.webp");
+    background-size: 25cm;
+    background-repeat: round;
+  }
+
+  body {
+    margin: clamp(24px, 4vw, 64px);
+    padding-bottom: 8em;
+  }
+
+  header {
+    display: flex;
+    place-items: center;
+    place-content: center;
+    width: 100%;
+
+    & > a > img {
+      width: max(20vw, 20em);
+      max-width: 100%;
+      height: auto;
+      margin-bottom: 2em;
+    }
+  }
+</style>

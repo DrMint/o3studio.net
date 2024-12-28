@@ -1,0 +1,148 @@
+---
+import { Image } from "astro:assets";
+import { getCollection, render } from "astro:content";
+import Html from "../../components/Html.astro";
+import { getEntry } from "astro:content";
+import Button from "../../components/Button.astro";
+import Credits from "../../components/Credits.astro";
+
+export async function getStaticPaths() {
+  const series = await getCollection("series");
+  const books = await Promise.all(
+    series.flatMap((series) =>
+      series.data.books.map(async (book) => ({
+        series,
+        book: (await getEntry(book.collection, book.id))!,
+      }))
+    )
+  );
+  return books.map(({ book, series }) => ({
+    params: { slug: book.slug },
+    props: { book, series },
+  }));
+}
+
+const { book, series } = Astro.props;
+const { Content: SeriesContent } = await render(series);
+---
+
+<Html>
+  <Button href="/" color={book.data.darkColor}>🠜 Go back</Button>
+  <div
+    id="layout"
+    style={`--light-color: ${book.data.lightColor}; --dark-color: ${book.data.darkColor}`}
+  >
+    <div id="left">
+      <Image
+        src={book.data.cover}
+        alt={`Cover for ${book.data.title} - ${book.data.subtitle}`}
+      />
+      <a href={book.data.render.src} id="render">
+        <Image src={book.data.render} alt={""} />
+      </a>
+    </div>
+    <div id="right">
+      <div id="series-card">
+        <Image id="logo" src={series.data.image} alt={series.data.title} />
+        <div>
+          <SeriesContent />
+        </div>
+      </div>
+      <Button
+        href={`/pdfjs/web/viewer.html?file=/pdf/${book.slug}.pdf`}
+        color={book.data.darkColor}
+        primary>Read online</Button
+      >
+      <Credits />
+    </div>
+  </div>
+</Html>
+
+<style>
+  #layout {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1em 3em;
+    margin-top: 3em;
+
+    @media (max-width: calc(70vh * 21 / 29.7 + 3em + 40ch)) {
+      grid-template-columns: unset;
+    }
+
+    & > #left {
+      width: min-content;
+      display: flex;
+      flex-direction: column;
+      place-items: start;
+      gap: 1em;
+
+      & > img {
+        max-height: 70vh;
+        width: auto;
+        border: 3px solid var(--light-color);
+        box-sizing: border-box;
+      }
+
+      @media (max-width: calc(70vh * 21 / 29.7 + 3em + 40ch)) {
+        width: unset;
+
+        & > img {
+          max-height: unset;
+          width: 100%;
+          height: auto;
+        }
+      }
+    }
+
+    & > #right {
+      display: flex;
+      flex-direction: column;
+      gap: 3em;
+      place-items: start;
+
+      & > #series-card {
+        background-color: white;
+        border: 3px solid var(--light-color);
+        width: fit-content;
+        max-width: 70ch;
+        padding: 1.5em;
+        padding-right: 2em;
+        padding-bottom: 1em;
+        display: flex;
+        flex-direction: column;
+
+        & > :global(*) {
+          margin: 0 !important;
+        }
+      }
+    }
+  }
+
+  #logo {
+    width: max(20vw, 20em);
+    max-width: 100%;
+    height: auto;
+  }
+
+  #render {
+    display: contents;
+
+    & > img {
+      width: 100%;
+      height: auto;
+      cursor: zoom-in;
+
+      outline-color: var(--dark-color);
+      outline-width: 3px;
+      outline-offset: -3px;
+      outline-style: solid;
+      transition-duration: 100ms;
+      transition-property: outline-width, outline-offset;
+
+      &:hover {
+        outline-width: 8px;
+        outline-offset: -8px;
+      }
+    }
+  }
+</style>

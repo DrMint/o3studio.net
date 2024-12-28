@@ -1,0 +1,83 @@
+---
+import { Image } from "astro:assets";
+import type { CollectionEntry } from "astro:content";
+import { getEntries } from "astro:content";
+
+interface Props {
+  series: CollectionEntry<"series">;
+}
+
+const props = Astro.props;
+const series = {
+  ...props.series.data,
+  books: await getEntries(props.series.data.books),
+};
+---
+
+<Image id="logo" src={series.image} alt={series.title} />
+
+<p>{series.short}</p>
+
+<section>
+  {
+    series.books.map(({ data, slug }) => (
+      <a
+        href={`/books/${slug}`}
+        style={`--light-color: ${data.lightColor}; --dark-color: ${data.darkColor}`}
+      >
+        <Image
+          src={data.cover}
+          alt={`Cover for ${data.title} - ${data.subtitle}`}
+        />
+        <h3>{data.subtitle}</h3>
+      </a>
+    ))
+  }
+</section>
+
+<style>
+  #logo {
+    width: max(20vw, 20em);
+    max-width: 100%;
+    height: auto;
+  }
+
+  p {
+    margin-top: 1em;
+    margin-bottom: 3em;
+    max-width: 70ch;
+  }
+
+  section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 5em;
+
+    & > a {
+      color: var(--dark-color);
+      text-decoration: none;
+
+      &:hover > img {
+        outline-width: 8px;
+      }
+
+      & > h3 {
+        font-size: 150%;
+        margin-top: 0.5em;
+        margin-bottom: 0;
+        text-align: center;
+        font-weight: 700;
+      }
+
+      & > img {
+        width: 100%;
+        height: auto;
+        outline-color: var(--light-color);
+        outline-width: 3px;
+        outline-style: solid;
+        transition-duration: 100ms;
+        transition-property: outline-width, outline-offset;
+      }
+    }
+  }
+</style>
