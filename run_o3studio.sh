@@ -1,5 +1,11 @@
+# Prevent downloading dev dependencies
+NODE_ENV=production
+
 git pull
-rm -r dist
+
 npm ci
+
+rm -r dist
 npm run build
+
 npm run preview -- --port 45332 --host --allowed-hosts=o3studio.net
