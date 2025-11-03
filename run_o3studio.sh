@@ -1,5 +1,5 @@
 # Prevent downloading dev dependencies
-NODE_ENV=production
+export NODE_ENV=production
 
 git pull
 
