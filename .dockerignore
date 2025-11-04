@@ -1,0 +1,12 @@
+.git
+.astro
+.vscode
+dist
+node_modules
+.ncurc.yml
+.prettierignore
+.prettierrc
+docker-compose.yml
+Dockerfile
+README.md
+run_o3studio.sh
