@@ -1,11 +1,10 @@
-version: '3.8'
-
 services:
   web:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: o3studio-net
+    image: drmint/o3studio:latest
+    container_name: o3studio
     ports:
       - "45332:80"
     restart: unless-stopped

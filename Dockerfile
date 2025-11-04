@@ -6,7 +6,7 @@ WORKDIR /app
 # That way, Docker can reuse the cached dependencies when
 # the source code changes but not the dependencies themselves.
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Copy the rest of the source code
 COPY . .
