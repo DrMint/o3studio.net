@@ -20,9 +20,9 @@ const series = {
 
 <section>
   {
-    series.books.map(({ data, slug }) => (
+    series.books.map(({ data, id }) => (
       <a
-        href={`/books/${slug}`}
+        href={`/books/${id}`}
         style={`--light-color: ${data.lightColor}; --dark-color: ${data.darkColor}`}
       >
         <Image

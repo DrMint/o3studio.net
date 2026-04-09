@@ -14,10 +14,10 @@
     "upgrade": "npx @astrojs/upgrade && ncu"
   },
   "dependencies": {
-    "astro": "^5.15.3"
+    "astro": "^6.1.5"
   },
   "devDependencies": {
-    "@astrojs/check": "^0.9.5",
+    "@astrojs/check": "^0.9.8",
     "@astrojs/upgrade": "^0.6.2",
     "npm-check-updates": "^19.1.2",
     "prettier": "^3.6.2",

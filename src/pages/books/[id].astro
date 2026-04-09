@@ -17,7 +17,7 @@ export async function getStaticPaths() {
     )
   );
   return books.map(({ book, series }) => ({
-    params: { slug: book.slug },
+    params: { id: book.id },
     props: { book, series },
   }));
 }
@@ -27,7 +27,7 @@ const { Content: SeriesContent } = await render(series);
 ---
 
 <Html>
-  <Button href="/" color={book.data.darkColor}>🠜 Go back</Button>
+  <Button href="/" color={book.data.darkColor}>{"<"} Go back</Button>
   <div
     id="layout"
     style={`--light-color: ${book.data.lightColor}; --dark-color: ${book.data.darkColor}`}
@@ -49,7 +49,7 @@ const { Content: SeriesContent } = await render(series);
         </div>
       </div>
       <Button
-        href={`/pdfjs/web/viewer.html?file=/pdf/${book.slug}.pdf`}
+        href={`/pdfjs/web/viewer.html?file=/pdf/${book.id}.pdf`}
         color={book.data.darkColor}
         primary>Read online</Button
       >
