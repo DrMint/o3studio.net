@@ -1,7 +1,7 @@
 ---
 title: "Neon Genesis Evangelion: Genocide"
-subtitle: "Volume 2"
+subtitle: "Volume 6"
 cover: "./cover.jpg"
-lightColor: "#E7594C"
-darkColor: "#C04739"
+lightColor: "#1a1a1a"
+darkColor: "#1a1a1a"
 ---

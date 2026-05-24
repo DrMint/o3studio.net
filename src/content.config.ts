@@ -9,7 +9,6 @@ const booksCollection = defineCollection({
       title: z.string(),
       subtitle: z.string(),
       cover: image(),
-      render: image(),
       darkColor: z.string(),
       lightColor: z.string(),
     }),

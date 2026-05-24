@@ -37,9 +37,6 @@ const { Content: SeriesContent } = await render(series);
         src={book.data.cover}
         alt={`Cover for ${book.data.title} - ${book.data.subtitle}`}
       />
-      <a href={book.data.render.src} id="render">
-        <Image src={book.data.render} alt={""} />
-      </a>
     </div>
     <div id="right">
       <div id="series-card">

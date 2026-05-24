@@ -7,6 +7,7 @@ books:
   - nge-genocide-vol3
   - nge-genocide-vol4
   - nge-genocide-vol5
+  - nge-genocide-vol6
 short: "Three months after the death of the 17th Angel, NERV and its people struggle to survive. The Children face new challenges and the lingering traumas of the past, but for two of them the most difficult test may just be each other. Amidst such personal conflicts, individuals and organizations accelerate their agendas in their bid for power and control of the most powerful weapon on Earth: the Evangelion."
 ---
 
