@@ -6,6 +6,7 @@ interface Props {
   href: string;
   color: string;
   primary?: boolean;
+  disabled?: boolean;
 }
 
 const props = Astro.props;
@@ -13,11 +14,11 @@ const props = Astro.props;
 
 {
   props.primary ? (
-    <PrimaryButton {...props}>
+    <PrimaryButton {...props} disabled={props.disabled ?? false}>
       <slot />
     </PrimaryButton>
   ) : (
-    <SecondaryButton {...props}>
+    <SecondaryButton {...props} disabled={props.disabled ?? false}>
       <slot />
     </SecondaryButton>
   )

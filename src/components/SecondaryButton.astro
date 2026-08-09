@@ -2,12 +2,17 @@
 interface Props {
   href: string;
   color: string;
+  disabled: boolean;
 }
 
-const { color, href } = Astro.props;
+const { color, href, disabled } = Astro.props;
 ---
 
-<a href={href} style={`--color: ${color}`}><slot /></a>
+<a
+  href={disabled ? undefined : href}
+  style={`--color: ${color}`}
+  aria-disabled={disabled}><slot /></a
+>
 
 <style>
   a {
@@ -29,6 +34,12 @@ const { color, href } = Astro.props;
     &:focus-within {
       background-color: var(--color);
       color: white;
+    }
+
+    &[aria-disabled="true"] {
+      color: var(--color);
+      background-color: white;
+      cursor: not-allowed;
     }
   }
 </style>

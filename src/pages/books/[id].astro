@@ -45,11 +45,26 @@ const { Content: SeriesContent } = await render(series);
           <SeriesContent />
         </div>
       </div>
-      <Button
-        href={`/pdfjs/web/viewer.html?file=/pdf/${book.id}.pdf`}
-        color={book.data.darkColor}
-        primary>Read online</Button
-      >
+      {
+        book.data.upcoming ? (
+          <Button
+            href={`/pdfjs/web/viewer.html?file=/pdf/${book.id}.pdf`}
+            color={book.data.darkColor}
+            primary
+            disabled
+          >
+            Upcoming
+          </Button>
+        ) : (
+          <Button
+            href={`/pdfjs/web/viewer.html?file=/pdf/${book.id}.pdf`}
+            color={book.data.darkColor}
+            primary
+          >
+            Read online
+          </Button>
+        )
+      }
       <Credits />
     </div>
   </div>
