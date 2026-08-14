@@ -66,36 +66,40 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     </label>
     <div id="spread">
       <div id="book" data-closed="true" data-cover="front">
-        <button
-          type="button"
+        <div
           class="page"
           data-page="left"
           data-empty="true"
           data-active="false"
+          role="button"
+          tabindex="0"
           aria-label="Previous pages"
         >
           <span class="page-shell">
             <span class="page-edge" aria-hidden="true"></span>
             <span class="page-face">
               <canvas></canvas>
+              <div class="textLayer" hidden></div>
             </span>
           </span>
-        </button>
-        <button
-          type="button"
+        </div>
+        <div
           class="page"
           data-page="right"
           data-empty="true"
           data-active="false"
+          role="button"
+          tabindex="0"
           aria-label="Next pages"
         >
           <span class="page-shell">
             <span class="page-face">
               <canvas></canvas>
+              <div class="textLayer" hidden></div>
             </span>
             <span class="page-edge" aria-hidden="true"></span>
           </span>
-        </button>
+        </div>
       </div>
     </div>
   </div>
@@ -252,18 +256,6 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     cursor: default;
   }
 
-  .page[data-active="true"] {
-    cursor: pointer;
-  }
-
-  .page[data-page="left"][data-active="true"] {
-    cursor: w-resize;
-  }
-
-  .page[data-page="right"][data-active="true"] {
-    cursor: e-resize;
-  }
-
   .page[data-empty="true"] {
     visibility: hidden;
     pointer-events: none;
@@ -297,10 +289,23 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     overflow: hidden;
   }
 
+  .page-face > canvas {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    position: relative;
+    z-index: 0;
+  }
+
+  .page-face > .textLayer {
+    z-index: 1;
+  }
+
   #book:not([data-cover]) .page-face::before {
     content: "";
     position: absolute;
     inset: 0;
+    z-index: 2;
     pointer-events: none;
     background-image: url("/paper-book.webp");
     opacity: 0.5;
@@ -312,6 +317,7 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     content: "";
     position: absolute;
     inset: 0;
+    z-index: 3;
     pointer-events: none;
   }
 
@@ -362,10 +368,51 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
       transparent 5.2%
     );
   }
+</style>
 
-  .page-face > canvas {
-    display: block;
-    max-width: 100%;
-    max-height: 100%;
+<style is:global>
+  .textLayer {
+    position: absolute;
+    inset: 0;
+    overflow: clip;
+    opacity: 1;
+    line-height: 1;
+    text-size-adjust: none;
+    transform-origin: 0 0;
+    caret-color: CanvasText;
+  }
+
+  .textLayer :is(span, br) {
+    color: transparent;
+    position: absolute;
+    white-space: pre;
+    cursor: text;
+    transform-origin: 0% 0%;
+    user-select: text;
+  }
+
+  .textLayer {
+    --min-font-size: 1;
+    --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+    --min-font-size-inv: calc(1 / var(--min-font-size));
+  }
+
+  .textLayer > :not(.markedContent),
+  .textLayer .markedContent span:not(.markedContent) {
+    z-index: 1;
+    --font-height: 0;
+    font-size: calc(var(--text-scale-factor) * var(--font-height));
+    --scale-x: 1;
+    --rotate: 0deg;
+    transform: rotate(var(--rotate)) scaleX(var(--scale-x))
+      scale(var(--min-font-size-inv));
+  }
+
+  .textLayer .markedContent {
+    display: contents;
+  }
+
+  .textLayer ::selection {
+    background: rgb(0 100 255 / 0.35);
   }
 </style>
