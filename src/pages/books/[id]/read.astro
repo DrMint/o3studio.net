@@ -375,12 +375,27 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
   }
 
   #book {
+    position: relative;
     display: flex;
     flex-direction: row;
     align-items: stretch;
     width: max-content;
     max-width: none;
     transform-origin: 0 0;
+  }
+
+  #book::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    background: #ebe7e4;
+    mix-blend-mode: multiply;
+  }
+
+  #book[data-cover]::after {
+    display: none;
   }
 
   #book.is-preview-zoom {
@@ -476,11 +491,11 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     background: linear-gradient(
       to right,
       transparent 80%,
-      rgb(0 0 0 / 0.01) 90%,
-      rgb(0 0 0 / 0.05) 95%,
-      rgb(0 0 0 / 0.1) 99%,
-      rgb(0 0 0 / 0.15) 99.5%,
-      rgb(0 0 0 / 0.3) 100%
+      rgb(100 70 50 / 0.01) 90%,
+      rgb(100 70 50 / 0.05) 95%,
+      rgb(100 70 50 / 0.1) 99%,
+      rgb(100 70 50 / 0.15) 99.5%,
+      rgb(100 70 50 / 0.3) 100%
     );
   }
 
@@ -488,11 +503,11 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     background: linear-gradient(
       to left,
       transparent 80%,
-      rgb(0 0 0 / 0.01) 90%,
-      rgb(0 0 0 / 0.05) 95%,
-      rgb(0 0 0 / 0.1) 99%,
-      rgb(0 0 0 / 0.15) 99.5%,
-      rgb(0 0 0 / 0.3) 100%
+      rgb(100 70 50 / 0.01) 90%,
+      rgb(100 70 50 / 0.05) 95%,
+      rgb(100 70 50 / 0.1) 99%,
+      rgb(100 70 50 / 0.15) 99.5%,
+      rgb(100 70 50 / 0.3) 100%
     );
   }
 
