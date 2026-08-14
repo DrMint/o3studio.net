@@ -698,6 +698,7 @@ const innerCover = await getImage({
   }
 
   .page-edge {
+    position: relative;
     flex: 0 0 auto;
     width: calc(var(--edge-ratio, 0) * var(--page-face-width, 0px));
     background-color: #d0d0d0;
@@ -707,8 +708,29 @@ const innerCover = await getImage({
     background-position: center left;
   }
 
+  .page-edge::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    /* Darken the outermost edge; intensity follows stack shade. */
+    background-image: linear-gradient(
+      to right,
+      rgb(0 0 0 / calc(45% * var(--stack-shade, 0))),
+      transparent 50%
+    );
+  }
+
   .page[data-page="right"] .page-edge {
     background-position: center right;
+  }
+
+  .page[data-page="right"] .page-edge::after {
+    background-image: linear-gradient(
+      to left,
+      rgb(0 0 0 / calc(45% * var(--stack-shade, 0))),
+      transparent 50%
+    );
   }
 
   .page-face {
