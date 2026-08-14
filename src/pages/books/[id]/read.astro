@@ -2,6 +2,7 @@
 import { getCollection, getEntry } from "astro:content";
 import Html from "../../../components/Html.astro";
 import Button from "../../../components/Button.astro";
+import Icon from "../../../components/Icon.astro";
 
 export async function getStaticPaths() {
   const series = await getCollection("series");
@@ -31,7 +32,8 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
   >
     <header id="toolbar">
       <Button href={`/books/${book.id}`} color={book.data.darkColor}>
-        {"<"} Go back
+        <Icon name="arrow_back" />
+        Go back
       </Button>
       <div id="titles">
         <h1 id="book-title">
@@ -52,17 +54,22 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
           <span data-page-count></span>
         </label>
         <div id="zoom-controls">
-          <button type="button" data-zoom-out aria-label="Zoom out">−</button>
+          <button type="button" data-zoom-out aria-label="Zoom out">
+            <Icon name="zoom_out" />
+          </button>
           <button type="button" data-zoom-reset>
             <span data-zoom-label>100%</span>
           </button>
-          <button type="button" data-zoom-in aria-label="Zoom in">+</button>
+          <button type="button" data-zoom-in aria-label="Zoom in">
+            <Icon name="zoom_in" />
+          </button>
         </div>
         <Button
           href={pdfUrl}
           download={`${book.id}.pdf`}
           color={book.data.darkColor}
         >
+          <Icon name="download" />
           Download
         </Button>
       </div>
@@ -78,7 +85,7 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
         data-turn="prev"
         aria-label="Previous pages"
       >
-        ‹
+        <Icon name="chevron_left" size="2rem" />
       </button>
       <div id="spread">
         <div id="spread-stage">
@@ -117,7 +124,7 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
         data-turn="next"
         aria-label="Next pages"
       >
-        ›
+        <Icon name="chevron_right" size="2rem" />
       </button>
     </div>
   </div>
@@ -216,6 +223,9 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     font-weight: 700;
     line-height: 1;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   #zoom-controls > button:hover,
@@ -299,16 +309,17 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     transform: translateY(-50%);
     box-sizing: border-box;
     margin: 0;
-    padding: 0.55em;
+    padding: 0.45em;
     border: 3px solid var(--dark-color);
     background: white;
     color: var(--dark-color);
     font: inherit;
-    font-size: 1.75rem;
-    font-weight: 700;
     line-height: 1;
     cursor: pointer;
     user-select: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   #turn-prev {

@@ -1,0 +1,16 @@
+---
+import { Icon as AstroIcon } from "astro-icon/components";
+
+interface Props {
+  name: string;
+  class?: string;
+  size?: number | string;
+}
+
+const { name, class: className, size = "1.25em" } = Astro.props;
+const iconName = name.includes(":")
+  ? name
+  : `material-symbols:${name.replaceAll("_", "-")}`;
+---
+
+<AstroIcon name={iconName} class={className} size={size} aria-hidden="true" />

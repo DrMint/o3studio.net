@@ -4,6 +4,7 @@ import { getCollection, render } from "astro:content";
 import Html from "../../../components/Html.astro";
 import { getEntry } from "astro:content";
 import Button from "../../../components/Button.astro";
+import Icon from "../../../components/Icon.astro";
 import Credits from "../../../components/Credits.astro";
 
 export async function getStaticPaths() {
@@ -24,10 +25,14 @@ export async function getStaticPaths() {
 
 const { book, series } = Astro.props;
 const { Content: SeriesContent } = await render(series);
+const pdfUrl = `/pdf/${book.id}.pdf`;
 ---
 
 <Html>
-  <Button href="/" color={book.data.darkColor}>{"<"} Go back</Button>
+  <Button href="/" color={book.data.darkColor}>
+    <Icon name="arrow_back" />
+    Go back
+  </Button>
   <div
     id="layout"
     style={`--light-color: ${book.data.lightColor}; --dark-color: ${book.data.darkColor}`}
@@ -45,26 +50,34 @@ const { Content: SeriesContent } = await render(series);
           <SeriesContent />
         </div>
       </div>
-      {
-        book.data.upcoming ? (
-          <Button
-            href=""
-            color={book.data.darkColor}
-            primary
-            disabled
-          >
-            Upcoming
-          </Button>
-        ) : (
-          <Button
-            href={`/books/${book.id}/read`}
-            color={book.data.darkColor}
-            primary
-          >
-            Read online
-          </Button>
-        )
-      }
+      <div id="actions">
+        {
+          book.data.upcoming ? (
+            <Button href="" color={book.data.darkColor} primary disabled>
+              Upcoming
+            </Button>
+          ) : (
+            <>
+              <Button
+                href={`/books/${book.id}/read`}
+                color={book.data.darkColor}
+                primary
+              >
+                <Icon name="menu_book" />
+                Read online
+              </Button>
+              <Button
+                href={pdfUrl}
+                download={`${book.id}.pdf`}
+                color={book.data.darkColor}
+              >
+                <Icon name="download" />
+                Download
+              </Button>
+            </>
+          )
+        }
+      </div>
       <Credits />
     </div>
   </div>
@@ -100,6 +113,12 @@ const { Content: SeriesContent } = await render(series);
       flex-direction: column;
       gap: 3em;
       place-items: start;
+
+      & > #actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75em;
+      }
 
       & > #series-card {
         background-color: white;
