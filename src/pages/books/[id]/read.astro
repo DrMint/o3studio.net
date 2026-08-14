@@ -41,36 +41,38 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
       </div>
     </header>
     <div id="spread">
-      <button
-        type="button"
-        class="page"
-        data-page="left"
-        data-empty="true"
-        data-active="false"
-        aria-label="Previous pages"
-      >
-        <span class="page-shell">
-          <span class="page-edge" aria-hidden="true"></span>
-          <span class="page-face">
-            <canvas></canvas>
+      <div id="book" data-closed="true" data-cover="front">
+        <button
+          type="button"
+          class="page"
+          data-page="left"
+          data-empty="true"
+          data-active="false"
+          aria-label="Previous pages"
+        >
+          <span class="page-shell">
+            <span class="page-edge" aria-hidden="true"></span>
+            <span class="page-face">
+              <canvas></canvas>
+            </span>
           </span>
-        </span>
-      </button>
-      <button
-        type="button"
-        class="page"
-        data-page="right"
-        data-empty="true"
-        data-active="false"
-        aria-label="Next pages"
-      >
-        <span class="page-shell">
-          <span class="page-face">
-            <canvas></canvas>
+        </button>
+        <button
+          type="button"
+          class="page"
+          data-page="right"
+          data-empty="true"
+          data-active="false"
+          aria-label="Next pages"
+        >
+          <span class="page-shell">
+            <span class="page-face">
+              <canvas></canvas>
+            </span>
+            <span class="page-edge" aria-hidden="true"></span>
           </span>
-          <span class="page-edge" aria-hidden="true"></span>
-        </span>
-      </button>
+        </button>
+      </div>
     </div>
   </div>
 </Html>
@@ -103,6 +105,7 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     grid-template-rows: auto 1fr;
     gap: 0.75rem;
     padding: clamp(12px, 2vw, 28px);
+    padding-bottom: clamp(12px, 3vw, 56px);
   }
 
   #toolbar {
@@ -142,32 +145,35 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
   #spread {
     min-height: 0;
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0;
-    align-items: center;
+    place-items: center;
+  }
+
+  #book {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  #book:not([data-closed="true"]),
+  #book[data-closed="true"] .page:not([data-empty="true"]) .page-shell {
+    box-shadow:
+      0 0.1em 0.3em rgb(0 0 0 / 70%),
+      0 1em 1em rgb(0 0 0 / 30%),
+      0 2em 2em rgb(0 0 0 / 27%),
+      0 12em 12em rgb(0 0 0 / 50%);
   }
 
   .page {
     box-sizing: border-box;
-    width: 100%;
-    height: 100%;
-    min-width: 0;
-    min-height: 0;
     margin: 0;
     padding: 0;
     border: 0;
     background: transparent;
-    display: grid;
-    align-items: center;
+    display: block;
+    line-height: 0;
     cursor: default;
-  }
-
-  .page[data-page="left"] {
-    justify-items: end;
-  }
-
-  .page[data-page="right"] {
-    justify-items: start;
   }
 
   .page[data-active="true"] {
@@ -243,6 +249,30 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
       rgb(0 0 0 / 0.1) 99%,
       rgb(0 0 0 / 0.15) 99.5%,
       rgb(0 0 0 / 0.3) 100%
+    );
+  }
+
+  #book[data-cover="front"] .page[data-page="right"] .page-face::after {
+    background: linear-gradient(
+      to right,
+      rgb(0 0 0 / 0.5) 0%,
+      transparent 0.8%,
+      rgb(0 0 0 / 0.1) 3%,
+      rgb(0 0 0 / 0.25) 3.5%,
+      rgb(0 0 0 / 0.3) 4.5%,
+      transparent 5.2%
+    );
+  }
+
+  #book[data-cover="back"] .page[data-page="left"] .page-face::after {
+    background: linear-gradient(
+      to left,
+      rgb(0 0 0 / 0.5) 0%,
+      transparent 0.8%,
+      rgb(0 0 0 / 0.1) 3%,
+      rgb(0 0 0 / 0.25) 3.5%,
+      rgb(0 0 0 / 0.3) 4.5%,
+      transparent 5.2%
     );
   }
 

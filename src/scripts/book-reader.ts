@@ -26,8 +26,12 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   const pdfUrl = root.dataset.pdfUrl;
   if (!pdfUrl) throw new Error("Missing data-pdf-url");
 
+  const spreadEl = mustQuery(root, "#spread");
+  const bookEl = mustQuery(root, "#book");
   const leftBtn = mustQuery(root, "[data-page='left']") as HTMLButtonElement;
   const rightBtn = mustQuery(root, "[data-page='right']") as HTMLButtonElement;
+  const leftFace = mustQuery(leftBtn, ".page-face");
+  const rightFace = mustQuery(rightBtn, ".page-face");
   const leftCanvas = mustQuery(leftBtn, "canvas") as HTMLCanvasElement;
   const rightCanvas = mustQuery(rightBtn, "canvas") as HTMLCanvasElement;
 
@@ -66,14 +70,18 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     rightBtn.dataset.active = String(right !== null && canNext);
 
     const closed = left === null || right === null;
+    bookEl.dataset.closed = String(closed);
+    if (closed) {
+      bookEl.dataset.cover = right !== null ? "front" : "back";
+    } else {
+      delete bookEl.dataset.cover;
+    }
+
     const firstPage = left ?? right!;
     const lastPage = right ?? left!;
     const pagesRead = firstPage - 1;
     const pagesRemaining = pageCount - lastPage;
-    const maxEdge = Math.min(
-      40,
-      Math.min(leftBtn.clientWidth, rightBtn.clientWidth) * 0.14,
-    );
+    const maxEdge = Math.min(40, (spreadEl.clientWidth / 2) * 0.14);
     const edgeScale = maxEdge / Math.max(pageCount - 1, 1);
     const leftEdge = closed ? 0 : edgeScale * pagesRead;
     const rightEdge = closed ? 0 : edgeScale * pagesRemaining;
@@ -85,16 +93,16 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     if (token !== renderToken) return;
 
     const base = samplePage.getViewport({ scale: 1 });
-    const maxWidth = Math.min(
-      leftBtn.clientWidth - leftEdge,
-      rightBtn.clientWidth - rightEdge,
-    );
-    const maxHeight = Math.min(leftBtn.clientHeight, rightBtn.clientHeight);
+    const maxWidth = (spreadEl.clientWidth - leftEdge - rightEdge) / 2;
+    const maxHeight = spreadEl.clientHeight;
     if (maxWidth < 1 || maxHeight < 1) return;
 
     const fit = Math.min(maxWidth / base.width, maxHeight / base.height);
     const cssWidth = Math.floor(base.width * fit);
     const cssHeight = Math.floor(base.height * fit);
+
+    sizeFace(leftFace, left === null ? cssWidth : null, cssHeight);
+    sizeFace(rightFace, right === null ? cssWidth : null, cssHeight);
 
     await Promise.all([
       left !== null
@@ -133,6 +141,11 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
 
     await page.render({ canvas, canvasContext: context, viewport }).promise;
   }
+}
+
+function sizeFace(face: HTMLElement, width: number | null, height: number) {
+  face.style.width = width === null ? "" : `${width}px`;
+  face.style.height = width === null ? "" : `${height}px`;
 }
 
 function clearCanvas(canvas: HTMLCanvasElement) {
