@@ -169,9 +169,12 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   });
   syncFullscreenUi();
 
-  /** Accumulate trackpad/wheel deltas so one flick doesn't skip many spreads. */
-  const WHEEL_PAGE_THRESHOLD = 60;
+  /** One spread per gesture — trackpads send large deltas that would skip pages. */
+  const WHEEL_PAGE_THRESHOLD = 40;
+  const WHEEL_FLIP_COOLDOWN_MS = 30;
   let wheelPageDelta = 0;
+  let wheelFlipLocked = false;
+  let wheelFlipTimer: ReturnType<typeof setTimeout> | undefined;
 
   function onReaderWheel(event: WheelEvent) {
     if (event.ctrlKey || event.metaKey) {
@@ -185,6 +188,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     // At fit zoom there's nothing to pan — use the wheel to turn pages.
     if (zoom <= ZOOM_MIN + 0.001) {
       event.preventDefault();
+      if (wheelFlipLocked) return;
       const delta =
         Math.abs(event.deltaY) >= Math.abs(event.deltaX)
           ? event.deltaY
@@ -194,14 +198,17 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
         wheelPageDelta = 0;
       }
       wheelPageDelta += delta;
-      while (wheelPageDelta >= WHEEL_PAGE_THRESHOLD) {
-        wheelPageDelta -= WHEEL_PAGE_THRESHOLD;
-        goSpread(1);
-      }
-      while (wheelPageDelta <= -WHEEL_PAGE_THRESHOLD) {
-        wheelPageDelta += WHEEL_PAGE_THRESHOLD;
-        goSpread(-1);
-      }
+      if (Math.abs(wheelPageDelta) < WHEEL_PAGE_THRESHOLD) return;
+
+      const direction = wheelPageDelta > 0 ? 1 : -1;
+      wheelPageDelta = 0;
+      wheelFlipLocked = true;
+      goSpread(direction);
+      window.clearTimeout(wheelFlipTimer);
+      wheelFlipTimer = setTimeout(() => {
+        wheelFlipLocked = false;
+        wheelFlipTimer = undefined;
+      }, WHEEL_FLIP_COOLDOWN_MS);
       return;
     }
 
