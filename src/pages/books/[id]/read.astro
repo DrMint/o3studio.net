@@ -71,52 +71,54 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
       <span class="visually-hidden">Jump to page</span>
       <input type="range" data-page-slider min="1" value="1" step="1" />
     </label>
-    <div id="spread">
-      <div id="spread-stage">
-        <div id="book-zoom-shell">
-          <div
-            id="book"
-            data-closed="true"
-            data-cover="front"
-            data-zoomed="false"
-          >
-        <div
-          class="page"
-          data-page="left"
-          data-empty="true"
-          data-active="false"
-          role="button"
-          tabindex="0"
-          aria-label="Previous pages"
-        >
-          <span class="page-shell">
-            <span class="page-edge" aria-hidden="true"></span>
-            <span class="page-face">
-              <canvas></canvas>
-              <div class="textLayer" hidden></div>
-            </span>
-          </span>
-        </div>
-        <div
-          class="page"
-          data-page="right"
-          data-empty="true"
-          data-active="false"
-          role="button"
-          tabindex="0"
-          aria-label="Next pages"
-        >
-          <span class="page-shell">
-            <span class="page-face">
-              <canvas></canvas>
-              <div class="textLayer" hidden></div>
-            </span>
-            <span class="page-edge" aria-hidden="true"></span>
-          </span>
-        </div>
+    <div id="spread-area">
+      <button
+        type="button"
+        id="turn-prev"
+        data-turn="prev"
+        aria-label="Previous pages"
+      >
+        ‹
+      </button>
+      <div id="spread">
+        <div id="spread-stage">
+          <div id="book-zoom-shell">
+            <div
+              id="book"
+              data-closed="true"
+              data-cover="front"
+              data-zoomed="false"
+            >
+              <div class="page" data-page="left" data-empty="true">
+                <span class="page-shell">
+                  <span class="page-edge" aria-hidden="true"></span>
+                  <span class="page-face">
+                    <canvas></canvas>
+                    <div class="textLayer" hidden></div>
+                  </span>
+                </span>
+              </div>
+              <div class="page" data-page="right" data-empty="true">
+                <span class="page-shell">
+                  <span class="page-face">
+                    <canvas></canvas>
+                    <div class="textLayer" hidden></div>
+                  </span>
+                  <span class="page-edge" aria-hidden="true"></span>
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+      <button
+        type="button"
+        id="turn-next"
+        data-turn="next"
+        aria-label="Next pages"
+      >
+        ›
+      </button>
     </div>
   </div>
 </Html>
@@ -279,14 +281,67 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
   }
 
   #book-subtitle {
-    font-weight: 500;
-    opacity: 0.8;
-    line-height: 1;
+    font-size: 0.9rem;
     margin: 0;
   }
 
-  #spread {
+  #spread-area {
+    position: relative;
     min-height: 0;
+    overflow: hidden;
+  }
+
+  #turn-prev,
+  #turn-next {
+    position: absolute;
+    top: 50%;
+    z-index: 5;
+    transform: translateY(-50%);
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0.55em;
+    border: 3px solid var(--dark-color);
+    background: white;
+    color: var(--dark-color);
+    font: inherit;
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  #turn-prev {
+    left: clamp(12px, 2vw, 28px);
+  }
+
+  #turn-next {
+    right: clamp(12px, 2vw, 28px);
+  }
+
+  #turn-prev:hover,
+  #turn-next:hover,
+  #turn-prev:focus-visible,
+  #turn-next:focus-visible {
+    background: var(--dark-color);
+    color: white;
+  }
+
+  #turn-prev:disabled,
+  #turn-next:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  #turn-prev:disabled:hover,
+  #turn-next:disabled:hover {
+    background: white;
+    color: var(--dark-color);
+  }
+
+  #spread {
+    position: absolute;
+    inset: 0;
     overflow: auto;
   }
 

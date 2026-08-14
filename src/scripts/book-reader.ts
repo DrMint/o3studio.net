@@ -64,6 +64,8 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   const zoomOutBtn = mustQuery(root, "[data-zoom-out]");
   const zoomResetBtn = mustQuery(root, "[data-zoom-reset]");
   const zoomLabel = mustQuery(root, "[data-zoom-label]");
+  const turnPrevBtn = mustQuery(root, "[data-turn='prev']") as HTMLButtonElement;
+  const turnNextBtn = mustQuery(root, "[data-turn='next']") as HTMLButtonElement;
 
   const pdf = await getDocument({ url: pdfUrl }).promise;
   const pageCount = pdf.numPages;
@@ -83,16 +85,38 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   pageCountLabel.textContent = `/ ${pageCount}`;
   syncZoomUi();
 
-  bindPageTurn(leftBtn, () => {
-    if (spread <= 0) return;
-    spread -= 1;
-    void showSpread();
-  });
+  turnPrevBtn.addEventListener("click", () => goSpread(-1));
+  turnNextBtn.addEventListener("click", () => goSpread(1));
 
-  bindPageTurn(rightBtn, () => {
-    if (spread >= maxSpread(pageCount)) return;
-    spread += 1;
-    void showSpread();
+  // Buttons sit above the scroller; keep wheel-zoom/pan working over them.
+  for (const btn of [turnPrevBtn, turnNextBtn]) {
+    btn.addEventListener(
+      "wheel",
+      (event) => {
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
+          setZoom(zoom * factor, true);
+          return;
+        }
+        spreadEl.scrollTop += event.deltaY;
+        spreadEl.scrollLeft += event.deltaX;
+      },
+      { passive: false },
+    );
+  }
+
+  window.addEventListener("keydown", (event) => {
+    if (isEditableTarget(event.target)) return;
+    if (event.key === "ArrowLeft" || event.key === "PageUp") {
+      event.preventDefault();
+      goSpread(-1);
+      return;
+    }
+    if (event.key === "ArrowRight" || event.key === "PageDown") {
+      event.preventDefault();
+      goSpread(1);
+    }
   });
 
   pageSlider.addEventListener("input", () => {
@@ -318,8 +342,8 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
 
     leftBtn.dataset.empty = String(left === null);
     rightBtn.dataset.empty = String(right === null);
-    leftBtn.dataset.active = String(left !== null && canPrev);
-    rightBtn.dataset.active = String(right !== null && canNext);
+    turnPrevBtn.disabled = !canPrev;
+    turnNextBtn.disabled = !canNext;
     syncPager();
 
     const closed = left === null || right === null;
@@ -491,24 +515,11 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   }
 }
 
-function bindPageTurn(pageEl: HTMLElement, turn: () => void) {
-  pageEl.addEventListener("click", (event) => {
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-    // Clicks on PDF text spans are for selection/copy, not page turns.
-    if (target.closest(".textLayer :is(span, br)")) return;
-    const selection = window.getSelection();
-    if (selection && !selection.isCollapsed && pageEl.contains(selection.anchorNode)) {
-      return;
-    }
-    turn();
-  });
-
-  pageEl.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    event.preventDefault();
-    turn();
-  });
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  const tag = target.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
 }
 
 function sizeFace(face: HTMLElement, width: number, height: number) {
