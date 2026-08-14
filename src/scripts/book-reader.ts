@@ -97,22 +97,53 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   turnPrevBtn.addEventListener("click", () => goSpread(-1));
   turnNextBtn.addEventListener("click", () => goSpread(1));
 
-  // Buttons sit above the scroller; keep wheel-zoom/pan working over them.
+  /** Accumulate trackpad/wheel deltas so one flick doesn't skip many spreads. */
+  const WHEEL_PAGE_THRESHOLD = 60;
+  let wheelPageDelta = 0;
+
+  function onReaderWheel(event: WheelEvent) {
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+      wheelPageDelta = 0;
+      const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
+      setZoom(zoom * factor, true);
+      return;
+    }
+
+    // At fit zoom there's nothing to pan — use the wheel to turn pages.
+    if (zoom <= ZOOM_MIN + 0.001) {
+      event.preventDefault();
+      const delta =
+        Math.abs(event.deltaY) >= Math.abs(event.deltaX)
+          ? event.deltaY
+          : event.deltaX;
+      if (delta === 0) return;
+      if (Math.sign(delta) !== Math.sign(wheelPageDelta) && wheelPageDelta !== 0) {
+        wheelPageDelta = 0;
+      }
+      wheelPageDelta += delta;
+      while (wheelPageDelta >= WHEEL_PAGE_THRESHOLD) {
+        wheelPageDelta -= WHEEL_PAGE_THRESHOLD;
+        goSpread(1);
+      }
+      while (wheelPageDelta <= -WHEEL_PAGE_THRESHOLD) {
+        wheelPageDelta += WHEEL_PAGE_THRESHOLD;
+        goSpread(-1);
+      }
+      return;
+    }
+
+    wheelPageDelta = 0;
+    // Turn buttons sit above the scroller; forward wheel to pan when zoomed.
+    if (event.currentTarget !== spreadEl) {
+      spreadEl.scrollTop += event.deltaY;
+      spreadEl.scrollLeft += event.deltaX;
+    }
+  }
+
+  // Buttons sit above the scroller; keep wheel-zoom/pan/page-turn working over them.
   for (const btn of [turnPrevBtn, turnNextBtn]) {
-    btn.addEventListener(
-      "wheel",
-      (event) => {
-        if (event.ctrlKey || event.metaKey) {
-          event.preventDefault();
-          const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
-          setZoom(zoom * factor, true);
-          return;
-        }
-        spreadEl.scrollTop += event.deltaY;
-        spreadEl.scrollLeft += event.deltaX;
-      },
-      { passive: false },
-    );
+    btn.addEventListener("wheel", onReaderWheel, { passive: false });
   }
 
   window.addEventListener("keydown", (event) => {
@@ -125,6 +156,16 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     if (event.key === "ArrowRight" || event.key === "PageDown") {
       event.preventDefault();
       goSpread(1);
+      return;
+    }
+    if (event.key === "Home") {
+      event.preventDefault();
+      goToPage(1);
+      return;
+    }
+    if (event.key === "End") {
+      event.preventDefault();
+      goToPage(pageCount);
     }
   });
 
@@ -146,16 +187,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     setZoom(1);
   });
 
-  spreadEl.addEventListener(
-    "wheel",
-    (event) => {
-      if (!event.ctrlKey && !event.metaKey) return;
-      event.preventDefault();
-      const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
-      setZoom(zoom * factor, true);
-    },
-    { passive: false },
-  );
+  spreadEl.addEventListener("wheel", onReaderWheel, { passive: false });
 
   let editingPageInput = false;
 
