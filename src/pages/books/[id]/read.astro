@@ -1,5 +1,6 @@
 ---
 import { getCollection, getEntry } from "astro:content";
+import { getImage } from "astro:assets";
 import Html from "../../../components/Html.astro";
 import Button from "../../../components/Button.astro";
 import Icon from "../../../components/Icon.astro";
@@ -23,6 +24,10 @@ export async function getStaticPaths() {
 const { book } = Astro.props;
 const readerPdfUrl = `/pdf/reader/${book.id}.pdf`;
 const downloadPdfUrl = `/pdf/download/${book.id}.pdf`;
+const innerCover = await getImage({
+  src: book.data.innerCover,
+  width: 1800,
+});
 ---
 
 <Html>
@@ -30,7 +35,7 @@ const downloadPdfUrl = `/pdf/download/${book.id}.pdf`;
     id="reader"
     data-book-id={book.id}
     data-pdf-url={readerPdfUrl}
-    style={`--light-color: ${book.data.lightColor}; --dark-color: ${book.data.darkColor}`}
+    style={`--light-color: ${book.data.lightColor}; --dark-color: ${book.data.darkColor}; --cover-image: url(${JSON.stringify(innerCover.src)})`}
   >
     <header id="toolbar">
       <Button href={`/books/${book.id}`} color={book.data.darkColor}>
@@ -115,34 +120,38 @@ const downloadPdfUrl = `/pdf/download/${book.id}.pdf`;
               data-cover="front"
               data-zoomed="false"
             >
+              <span id="book-hardcover" aria-hidden="true">
+                <span class="book-hardcover-specular"></span>
+              </span>
               <div class="page" data-page="left" data-empty="true">
-                <span class="page-shell">
-                  <span class="page-cover" aria-hidden="true"></span>
-                  <span class="page-edge" aria-hidden="true"></span>
-                  <span class="page-face">
-                    <canvas></canvas>
-                    <div class="textLayer" hidden></div>
+                <span class="page-stack">
+                  <span class="page-shell">
+                    <span class="page-edge" aria-hidden="true"></span>
+                    <span class="page-face">
+                      <canvas></canvas>
+                      <div class="textLayer" hidden></div>
+                    </span>
                   </span>
+                  <span class="page-tint" aria-hidden="true"></span>
+                  <span class="page-fold" aria-hidden="true"></span>
+                  <span class="page-specular" aria-hidden="true"></span>
                 </span>
-                <span class="page-tint" aria-hidden="true"></span>
-                <span class="page-fold" aria-hidden="true"></span>
-                <span class="page-lighting" aria-hidden="true"></span>
-                <span class="page-specular" aria-hidden="true"></span>
               </div>
               <div class="page" data-page="right" data-empty="true">
-                <span class="page-shell">
-                  <span class="page-face">
-                    <canvas></canvas>
-                    <div class="textLayer" hidden></div>
+                <span class="page-stack">
+                  <span class="page-shell">
+                    <span class="page-face">
+                      <canvas></canvas>
+                      <div class="textLayer" hidden></div>
+                    </span>
+                    <span class="page-edge" aria-hidden="true"></span>
                   </span>
-                  <span class="page-edge" aria-hidden="true"></span>
-                  <span class="page-cover" aria-hidden="true"></span>
+                  <span class="page-tint" aria-hidden="true"></span>
+                  <span class="page-fold" aria-hidden="true"></span>
+                  <span class="page-specular" aria-hidden="true"></span>
                 </span>
-                <span class="page-tint" aria-hidden="true"></span>
-                <span class="page-fold" aria-hidden="true"></span>
-                <span class="page-lighting" aria-hidden="true"></span>
-                <span class="page-specular" aria-hidden="true"></span>
               </div>
+              <span id="book-lighting" aria-hidden="true"></span>
             </div>
           </div>
         </div>
@@ -555,17 +564,88 @@ const downloadPdfUrl = `/pdf/download/${book.id}.pdf`;
     transform-origin: 0 0;
   }
 
+  /* Single double-page inner cover behind both pages. */
+  #book-hardcover {
+    position: absolute;
+    inset: 0;
+    background-color: var(--dark-color);
+    background-image: var(--cover-image);
+    background-size: 100% 100%;
+  }
+
+  /* Cover overlays: specular → spine shade */
+  #book-hardcover .book-hardcover-specular {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: url("/specularSinglePage.webp");
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    background-blend-mode: multiply;
+    mix-blend-mode: soft-light;
+    opacity: 1;
+  }
+
+  #book-hardcover::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    /* Spine band = full page-stack thickness (ratio × face width), centered. */
+    --spine-width: calc(
+      var(--spine-thickness, 0) * var(--page-face-width, 0px)
+    );
+    background-image: linear-gradient(
+      to left,
+      rgba(0, 0, 0, 0.5) 0%,
+      transparent 0.5%,
+      transparent calc(50% - var(--spine-width) / 2 - 1%),
+      rgba(0, 0, 0, 0.5) calc(50% - var(--spine-width) / 2),
+      rgba(0, 0, 0, 0.5) calc(50% + var(--spine-width) / 2),
+      transparent calc(50% + var(--spine-width) / 2 + 1%),
+      transparent 99.5%,
+      rgba(0, 0, 0, 0.5) 100%
+    );
+  }
+
+  #book[data-closed="true"] #book-hardcover {
+    display: none;
+  }
+
+  /* One lighting pass over the whole book (pages + hardcover). */
+  #book-lighting {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background-image: url("/lightingDoublePage.webp");
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    mix-blend-mode: multiply;
+    opacity: 0.3;
+  }
+
+  #book[data-closed="true"] #book-lighting {
+    background-image: url("/lightingSinglePage.webp");
+  }
+
   #book.is-preview-zoom {
     will-change: transform;
   }
 
-  #book:not([data-closed="true"]),
   #book[data-closed="true"] .page:not([data-empty="true"]) .page-shell {
     box-shadow:
       0 0.2em 0.3em rgb(0 0 0 / 70%),
       0 1em 1em rgb(0 0 0 / 30%),
       0 2em 2em rgb(0 0 0 / 27%),
       0 12em 12em rgb(0 0 0 / 50%);
+  }
+
+  #book:not([data-closed="true"]) {
+    box-shadow:
+      0 0.2em 0.3em rgb(0 0 0 / 70%),
+      0 1em 1em rgb(0 0 0 / 30%),
+      0 2em 2em rgb(0 0 0 / 27%);
   }
 
   .page {
@@ -579,10 +659,34 @@ const downloadPdfUrl = `/pdf/download/${book.id}.pdf`;
     line-height: 0;
     cursor: default;
     position: relative;
+    z-index: 1;
   }
 
   .page[data-empty="true"] {
     display: none;
+  }
+
+  .page-stack {
+    position: relative;
+    z-index: 1;
+    display: block;
+    line-height: 0;
+
+    box-shadow:
+      0 0.2em 0.3em rgb(0 0 0 / calc(40% * var(--stack-shade))),
+      0 1em 1em rgb(0 0 0 / calc(20% * var(--stack-shade))),
+      0 2em 2em rgb(0 0 0 / calc(27% * var(--stack-shade))),
+      0 12em 12em rgb(0 0 0 / calc(50% * var(--stack-shade)));
+  }
+
+  #book:not([data-closed="true"]) .page[data-page="left"] .page-stack {
+    margin: var(--cover-overhang-top, 0px) 0 var(--cover-overhang-bottom, 0px)
+      var(--cover-overhang-x, 0px);
+  }
+
+  #book:not([data-closed="true"]) .page[data-page="right"] .page-stack {
+    margin: var(--cover-overhang-top, 0px) var(--cover-overhang-x, 0px)
+      var(--cover-overhang-bottom, 0px) 0;
   }
 
   .page-shell {
@@ -604,60 +708,7 @@ const downloadPdfUrl = `/pdf/download/${book.id}.pdf`;
   }
 
   .page[data-page="right"] .page-edge {
-    transform: scaleX(-1);
-  }
-
-  /* Outer hardcover strip: PDF cover edge, mirrored. */
-  .page-cover {
-    position: relative;
-    flex: 0 0 auto;
-    width: calc(var(--cover-ratio, 0) * var(--page-face-width, 0px));
-    background-color: var(--dark-color);
-    background-image: var(--cover-image);
-    background-repeat: no-repeat;
-    background-size: calc(1 / max(var(--cover-ratio), 0.0001) * 100%) 100%;
-    transform: scaleX(-1);
-  }
-
-  .page-cover::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-  }
-
-  .page[data-page="left"] .page-cover {
-    /* Right edge of the front cover, then mirrored. */
-    background-position: right center;
-  }
-
-  .page[data-page="right"] .page-cover {
-    /* Left edge of the back cover, then mirrored. */
-    background-position: left center;
-  }
-
-  .page[data-page="left"] .page-cover::after {
-    background: linear-gradient(
-      to right,
-      rgb(0 0 0 / min(0.4, calc(0.6 * var(--stack-shade, 0)))) 0%,
-      rgb(0 0 0 / calc(0.35 * var(--stack-shade, 0))) 10%,
-      rgb(0 0 0 / 0) 80%,
-      rgb(0 0 0 / 0.3) 100%
-    );
-  }
-
-  .page[data-page="right"] .page-cover::after {
-    background: linear-gradient(
-      to left,
-      rgb(0 0 0 / min(0.4, calc(0.6 * var(--stack-shade, 0)))) 0%,
-      rgb(0 0 0 / calc(0.35 * var(--stack-shade, 0))) 10%,
-      rgb(0 0 0 / 0) 80%,
-      rgb(0 0 0 / 0.3) 100%
-    );
-  }
-
-  #book[data-closed="true"] .page-cover {
-    display: none;
+    background-position: center right;
   }
 
   .page-face {
@@ -677,7 +728,7 @@ const downloadPdfUrl = `/pdf/download/${book.id}.pdf`;
     z-index: 1;
   }
 
-  /* Apply order: paper → tint → fold → lighting → specular */
+  /* Apply order: paper → tint → fold → specular (lighting is on #book) */
   .page-face::before {
     content: "";
     position: absolute;
@@ -724,32 +775,6 @@ const downloadPdfUrl = `/pdf/download/${book.id}.pdf`;
 
   #book[data-cover] .page-fold {
     display: none;
-  }
-
-  .page-lighting {
-    position: absolute;
-    inset: 0;
-    z-index: 5;
-    pointer-events: none;
-    background-image: url("/lightingDoublePage.webp");
-    background-repeat: no-repeat;
-    background-size: 200% 100%;
-    mix-blend-mode: multiply;
-    opacity: 0.3;
-  }
-
-  .page[data-page="left"] .page-lighting {
-    background-position: left center;
-  }
-
-  .page[data-page="right"] .page-lighting {
-    background-position: right center;
-  }
-
-  #book[data-cover] .page-lighting {
-    background-image: url("/lightingSinglePage.webp");
-    background-size: 100% 100%;
-    background-position: center;
   }
 
   .page-specular {

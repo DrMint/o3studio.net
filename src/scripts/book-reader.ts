@@ -40,8 +40,12 @@ function clamp(value: number, min: number, max: number): number {
  * e.g. 0.001 → 100 unread pages ≈ 10% of the face width.
  */
 const EDGE_WIDTH_PER_PAGE = 0.0003;
-/** Outer hardcover strip width as a fraction of page-face width (open book only). */
-const COVER_BOARD_RATIO = 0.04;
+/** Horizontal hardcover peek beyond the page stack, as a fraction of page-face width. */
+const COVER_OVERHANG_RATIO_X = 0.05;
+/** Top hardcover peek beyond the page stack, as a fraction of page-face width. */
+const COVER_OVERHANG_RATIO_TOP = 0.01;
+/** Bottom hardcover peek beyond the page stack, as a fraction of page-face width. */
+const COVER_OVERHANG_RATIO_BOTTOM = 0.02;
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 4;
 const ZOOM_STEP = 0.25;
@@ -85,6 +89,8 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   const bookEl = mustQuery(root, "#book");
   const leftBtn = mustQuery(root, "[data-page='left']");
   const rightBtn = mustQuery(root, "[data-page='right']");
+  const leftStack = mustQuery(leftBtn, ".page-stack");
+  const rightStack = mustQuery(rightBtn, ".page-stack");
   const leftFace = mustQuery(leftBtn, ".page-face");
   const rightFace = mustQuery(rightBtn, ".page-face");
   const leftCanvas = mustQuery(leftBtn, "canvas") as HTMLCanvasElement;
@@ -112,36 +118,6 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
 
   const pdf = await getDocument({ url: pdfUrl }).promise;
   const pageCount = pdf.numPages;
-
-  async function coverImageUrl(pageNumber: number): Promise<string> {
-    const page = await pdf.getPage(pageNumber);
-    const base = page.getViewport({ scale: 1 });
-    const scale = Math.min(2, 900 / base.width);
-    const viewport = page.getViewport({ scale });
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.floor(viewport.width);
-    canvas.height = Math.floor(viewport.height);
-    const context = canvas.getContext("2d");
-    if (!context) return "";
-    await page.render({
-      canvas,
-      canvasContext: context,
-      viewport,
-    }).promise;
-    return canvas.toDataURL("image/jpeg", 0.85);
-  }
-
-  const [frontCoverUrl, backCoverUrl] = await Promise.all([
-    coverImageUrl(1),
-    coverImageUrl(pageCount),
-  ]);
-  if (frontCoverUrl) {
-    leftBtn.style.setProperty("--cover-image", `url(${JSON.stringify(frontCoverUrl)})`);
-  }
-  if (backCoverUrl) {
-    rightBtn.style.setProperty("--cover-image", `url(${JSON.stringify(backCoverUrl)})`);
-  }
-
   const savedPage = readSavedPage(bookId);
   let spread =
     savedPage === null
@@ -165,6 +141,10 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   pageInput.max = String(pageCount);
   pageSlider.max = String(pageCount);
   pageCountLabel.textContent = `/ ${pageCount}`;
+  bookEl.style.setProperty(
+    "--spine-thickness",
+    String(pageCount * EDGE_WIDTH_PER_PAGE * 1.8),
+  );
   syncZoomUi();
 
   turnPrevBtn.addEventListener("click", () => goSpread(-1));
@@ -710,7 +690,9 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     const pagesRemaining = pageCount - lastPage;
     const leftRatio = closed ? 0 : pagesRead * EDGE_WIDTH_PER_PAGE;
     const rightRatio = closed ? 0 : pagesRemaining * EDGE_WIDTH_PER_PAGE;
-    const coverRatio = closed ? 0 : COVER_BOARD_RATIO;
+    const overhangX = closed ? 0 : COVER_OVERHANG_RATIO_X;
+    const overhangTop = closed ? 0 : COVER_OVERHANG_RATIO_TOP;
+    const overhangBottom = closed ? 0 : COVER_OVERHANG_RATIO_BOTTOM;
 
     const samplePage = await pdf.getPage(samplePageNumber);
     if (token !== renderToken) return;
@@ -728,37 +710,46 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     const availH = spreadEl.clientHeight - padY;
     if (availW < 1 || availH < 1) return;
 
-    // Faces + side edges + outer hardcover strips share the width.
+    // Faces + side edges + outer hardcover overhang share the space.
     const pageSlots = closed ? 1 : 2;
-    const coverSlots = closed ? 0 : 2;
     const widthFromViewport =
-      availW / (pageSlots + leftRatio + rightRatio + coverSlots * coverRatio);
-    const widthFromHeight = availH / aspect;
+      availW / (pageSlots + leftRatio + rightRatio + pageSlots * overhangX);
+    const heightFromViewport =
+      availH / (aspect + overhangTop + overhangBottom);
     const cssWidth = Math.floor(
-      Math.min(widthFromViewport, widthFromHeight) * zoom,
+      Math.min(widthFromViewport, heightFromViewport) * zoom,
     );
     const cssHeight = Math.floor(cssWidth * aspect);
     if (cssWidth < 1 || cssHeight < 1) return;
     const epoch = syncRasterLayout(cssWidth, cssHeight);
 
+    const overhangXPx = `${cssWidth * overhangX}px`;
+    const overhangTopPx = `${cssWidth * overhangTop}px`;
+    const overhangBottomPx = `${cssWidth * overhangBottom}px`;
+
     // Ratio only depends on reading position; face width updates on resize/zoom
     // and CSS keeps edge/cover thickness proportional.
     leftBtn.style.setProperty("--edge-ratio", String(leftRatio));
     rightBtn.style.setProperty("--edge-ratio", String(rightRatio));
-    // 0–1 shade for cover-strip gradients (1 ≈ thick side stack).
+    // 0–1 shade for page-stack shadows (1 ≈ thick side stack).
     const stackShadeFull = 0.06;
-    leftBtn.style.setProperty(
+    leftStack.style.setProperty(
       "--stack-shade",
       String(Math.min(1, leftRatio / stackShadeFull)),
     );
-    rightBtn.style.setProperty(
+    rightStack.style.setProperty(
       "--stack-shade",
       String(Math.min(1, rightRatio / stackShadeFull)),
     );
-    leftBtn.style.setProperty("--cover-ratio", String(coverRatio));
-    rightBtn.style.setProperty("--cover-ratio", String(coverRatio));
+    leftBtn.style.setProperty("--cover-overhang-x", overhangXPx);
+    leftBtn.style.setProperty("--cover-overhang-top", overhangTopPx);
+    leftBtn.style.setProperty("--cover-overhang-bottom", overhangBottomPx);
+    rightBtn.style.setProperty("--cover-overhang-x", overhangXPx);
+    rightBtn.style.setProperty("--cover-overhang-top", overhangTopPx);
+    rightBtn.style.setProperty("--cover-overhang-bottom", overhangBottomPx);
     leftBtn.style.setProperty("--page-face-width", `${cssWidth}px`);
     rightBtn.style.setProperty("--page-face-width", `${cssWidth}px`);
+    bookEl.style.setProperty("--page-face-width", `${cssWidth}px`);
 
     // Drop CSS preview before swapping in the new raster size so we don't
     // compound transform scale with the larger layout box.
