@@ -251,6 +251,28 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     }
   });
 
+  pageSlider.addEventListener("keydown", (event) => {
+    // Range inputs step by 1 page natively; that often stays on the same spread
+    // (e.g. 2→3). Use spread turns so both arrows always move the book.
+    if (
+      event.key === "ArrowLeft" ||
+      event.key === "ArrowDown" ||
+      event.key === "PageUp"
+    ) {
+      event.preventDefault();
+      goSpread(-1);
+      return;
+    }
+    if (
+      event.key === "ArrowRight" ||
+      event.key === "ArrowUp" ||
+      event.key === "PageDown"
+    ) {
+      event.preventDefault();
+      goSpread(1);
+    }
+  });
+
   pageSlider.addEventListener("input", () => {
     goToPage(Number(pageSlider.value));
   });
