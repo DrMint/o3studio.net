@@ -293,6 +293,37 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
 
   spreadEl.addEventListener("wheel", onReaderWheel, { passive: false });
 
+  let pinchStartDistance = 0;
+  let pinchStartZoom = 1;
+
+  function touchDistance(a: Touch, b: Touch): number {
+    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+  }
+
+  function onPinchStart(event: TouchEvent) {
+    if (event.touches.length !== 2) return;
+    pinchStartDistance = touchDistance(event.touches[0]!, event.touches[1]!);
+    pinchStartZoom = zoom;
+    wheelPageDelta = 0;
+  }
+
+  function onPinchMove(event: TouchEvent) {
+    if (event.touches.length !== 2 || pinchStartDistance < 1) return;
+    event.preventDefault();
+    const distance = touchDistance(event.touches[0]!, event.touches[1]!);
+    setZoom(pinchStartZoom * (distance / pinchStartDistance), true);
+  }
+
+  function onPinchEnd(event: TouchEvent) {
+    if (event.touches.length < 2) pinchStartDistance = 0;
+  }
+
+  // Pinch-to-zoom (bubbles from book, turn controls, etc.).
+  spreadArea.addEventListener("touchstart", onPinchStart, { passive: true });
+  spreadArea.addEventListener("touchmove", onPinchMove, { passive: false });
+  spreadArea.addEventListener("touchend", onPinchEnd);
+  spreadArea.addEventListener("touchcancel", onPinchEnd);
+
   let editingPageInput = false;
 
   pageInput.addEventListener("keydown", (event) => {

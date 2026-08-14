@@ -254,7 +254,7 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     margin-top: 0.5rem;
   }
 
-  @media (max-width: 480px), (max-height: 760px) {
+  @media (max-width: 480px), (max-height: 680px) {
     #small-screen-overlay {
       display: flex;
     }
@@ -409,6 +409,7 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     position: relative;
     min-height: 0;
     overflow: hidden;
+    touch-action: pan-x pan-y;
   }
 
   #spread-area:fullscreen {
@@ -514,6 +515,7 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     position: absolute;
     inset: 0;
     overflow: auto;
+    touch-action: pan-x pan-y;
   }
 
   #spread-stage {
