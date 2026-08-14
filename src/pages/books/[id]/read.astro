@@ -27,6 +27,7 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
 <Html>
   <div
     id="reader"
+    data-book-id={book.id}
     data-pdf-url={pdfUrl}
     style={`--light-color: ${book.data.lightColor}; --dark-color: ${book.data.darkColor}`}
   >

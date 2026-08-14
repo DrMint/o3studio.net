@@ -45,9 +45,34 @@ const ZOOM_SETTLE_MS = 140;
 const PREFETCH_SPREAD_RADIUS = 1;
 const RASTER_CACHE_LIMIT = 12;
 
+function progressStorageKey(bookId: string): string {
+  return `o3studio:book-progress:${bookId}`;
+}
+
+function readSavedPage(bookId: string): number | null {
+  try {
+    const raw = localStorage.getItem(progressStorageKey(bookId));
+    if (raw === null) return null;
+    const page = Number(raw);
+    return Number.isFinite(page) ? page : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSavedPage(bookId: string, page: number) {
+  try {
+    localStorage.setItem(progressStorageKey(bookId), String(page));
+  } catch {
+    // Private mode / quota — resume is best-effort.
+  }
+}
+
 export async function initBookReader(root: HTMLElement): Promise<void> {
   const pdfUrl = root.dataset.pdfUrl;
   if (!pdfUrl) throw new Error("Missing data-pdf-url");
+  const bookId = root.dataset.bookId ?? "";
+  if (!bookId) throw new Error("Missing data-book-id");
 
   const spreadEl = mustQuery(root, "#spread");
   const zoomShell = mustQuery(root, "#book-zoom-shell");
@@ -72,7 +97,11 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
 
   const pdf = await getDocument({ url: pdfUrl }).promise;
   const pageCount = pdf.numPages;
-  let spread = 0;
+  const savedPage = readSavedPage(bookId);
+  let spread =
+    savedPage === null
+      ? 0
+      : spreadForPage(clamp(Math.round(savedPage), 1, pageCount));
   let zoom = 1;
   /** Zoom level of the canvases currently on screen. */
   let renderedZoom = 1;
@@ -308,6 +337,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     const currentPage = displayedPage();
     pageInput.value = String(currentPage);
     pageSlider.value = String(currentPage);
+    writeSavedPage(bookId, currentPage);
   }
 
   function syncZoomUi() {
