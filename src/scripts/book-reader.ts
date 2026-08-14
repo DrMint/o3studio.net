@@ -1,5 +1,9 @@
-import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
-import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
+import {
+  getDocument,
+  GlobalWorkerOptions,
+  RenderingCancelledException,
+} from "pdfjs-dist";
+import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -30,6 +34,8 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+const SCRUB_DEBOUNCE_MS = 80;
+
 export async function initBookReader(root: HTMLElement): Promise<void> {
   const pdfUrl = root.dataset.pdfUrl;
   if (!pdfUrl) throw new Error("Missing data-pdf-url");
@@ -50,6 +56,8 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   const pageCount = pdf.numPages;
   let spread = 0;
   let renderToken = 0;
+  let scrubTimer: ReturnType<typeof setTimeout> | undefined;
+  const renderTasks = new Map<HTMLCanvasElement, RenderTask>();
 
   pageInput.max = String(pageCount);
   pageSlider.max = String(pageCount);
@@ -68,7 +76,11 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   });
 
   pageSlider.addEventListener("input", () => {
-    goToPage(Number(pageSlider.value));
+    scheduleScrub(Number(pageSlider.value));
+  });
+
+  pageSlider.addEventListener("change", () => {
+    flushScrub(Number(pageSlider.value));
   });
 
   let editingPageInput = false;
@@ -134,7 +146,28 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     return left ?? right ?? 1;
   }
 
+  function scheduleScrub(page: number) {
+    if (!Number.isFinite(page)) return;
+    spread = spreadForPage(clamp(Math.round(page), 1, pageCount));
+    pageInput.value = String(displayedPage());
+    window.clearTimeout(scrubTimer);
+    scrubTimer = setTimeout(() => {
+      scrubTimer = undefined;
+      void showSpread();
+    }, SCRUB_DEBOUNCE_MS);
+  }
+
+  function flushScrub(page: number) {
+    window.clearTimeout(scrubTimer);
+    scrubTimer = undefined;
+    if (!Number.isFinite(page)) return;
+    spread = spreadForPage(clamp(Math.round(page), 1, pageCount));
+    void showSpread();
+  }
+
   function goSpread(delta: number) {
+    window.clearTimeout(scrubTimer);
+    scrubTimer = undefined;
     const next = clamp(spread + delta, 0, maxSpread(pageCount));
     if (next === spread) {
       syncPager();
@@ -145,6 +178,8 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   }
 
   function goToPage(page: number) {
+    window.clearTimeout(scrubTimer);
+    scrubTimer = undefined;
     if (!Number.isFinite(page)) {
       syncPager();
       return;
@@ -163,6 +198,13 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     const currentPage = displayedPage();
     pageInput.value = String(currentPage);
     pageSlider.value = String(currentPage);
+  }
+
+  function cancelRender(canvas: HTMLCanvasElement) {
+    const task = renderTasks.get(canvas);
+    if (!task) return;
+    task.cancel();
+    renderTasks.delete(canvas);
   }
 
   async function showSpread() {
@@ -232,7 +274,14 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     cssHeight: number,
     token: number,
   ) {
+    // Always cancel before touching the canvas — overlapping pdf.js draws
+    // corrupt size/orientation when scrubbing quickly.
+    cancelRender(canvas);
+
     const page: PDFPageProxy = await doc.getPage(pageNumber);
+    if (token !== renderToken) return;
+
+    cancelRender(canvas);
     if (token !== renderToken) return;
 
     const base = page.getViewport({ scale: 1 });
@@ -249,22 +298,32 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     const context = canvas.getContext("2d");
     if (!context) return;
 
-    await page.render({ canvas, canvasContext: context, viewport }).promise;
+    const task = page.render({ canvas, canvasContext: context, viewport });
+    renderTasks.set(canvas, task);
+    try {
+      await task.promise;
+    } catch (error) {
+      if (error instanceof RenderingCancelledException) return;
+      throw error;
+    } finally {
+      if (renderTasks.get(canvas) === task) renderTasks.delete(canvas);
+    }
+  }
+
+  function clearCanvas(canvas: HTMLCanvasElement) {
+    cancelRender(canvas);
+    const context = canvas.getContext("2d");
+    if (context) context.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.width = 0;
+    canvas.height = 0;
+    canvas.style.width = "";
+    canvas.style.height = "";
   }
 }
 
 function sizeFace(face: HTMLElement, width: number | null, height: number) {
   face.style.width = width === null ? "" : `${width}px`;
   face.style.height = width === null ? "" : `${height}px`;
-}
-
-function clearCanvas(canvas: HTMLCanvasElement) {
-  const context = canvas.getContext("2d");
-  if (context) context.clearRect(0, 0, canvas.width, canvas.height);
-  canvas.width = 0;
-  canvas.height = 0;
-  canvas.style.width = "";
-  canvas.style.height = "";
 }
 
 function mustQuery(root: ParentNode, selector: string): HTMLElement {
