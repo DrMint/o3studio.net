@@ -1,10 +1,10 @@
 ---
 import { Image } from "astro:assets";
 import { getCollection, render } from "astro:content";
-import Html from "../../components/Html.astro";
+import Html from "../../../components/Html.astro";
 import { getEntry } from "astro:content";
-import Button from "../../components/Button.astro";
-import Credits from "../../components/Credits.astro";
+import Button from "../../../components/Button.astro";
+import Credits from "../../../components/Credits.astro";
 
 export async function getStaticPaths() {
   const series = await getCollection("series");
@@ -48,7 +48,7 @@ const { Content: SeriesContent } = await render(series);
       {
         book.data.upcoming ? (
           <Button
-            href={`/pdfjs/web/viewer.html?file=/pdf/${book.id}.pdf`}
+            href=""
             color={book.data.darkColor}
             primary
             disabled
@@ -57,7 +57,7 @@ const { Content: SeriesContent } = await render(series);
           </Button>
         ) : (
           <Button
-            href={`/pdfjs/web/viewer.html?file=/pdf/${book.id}.pdf`}
+            href={`/books/${book.id}/read`}
             color={book.data.darkColor}
             primary
           >

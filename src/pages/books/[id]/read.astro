@@ -1,0 +1,185 @@
+---
+import { getCollection, getEntry } from "astro:content";
+import Html from "../../../components/Html.astro";
+import Button from "../../../components/Button.astro";
+
+export async function getStaticPaths() {
+  const series = await getCollection("series");
+  const books = await Promise.all(
+    series.flatMap((series) =>
+      series.data.books.map(async (book) => ({
+        series,
+        book: (await getEntry(book.collection, book.id))!,
+      }))
+    )
+  );
+  return books.map(({ book, series }) => ({
+    params: { id: book.id },
+    props: { book, series },
+  }));
+}
+
+const { book, series } = Astro.props;
+const pdfUrl = `/pdf/${book.id}.pdf`;
+---
+
+<Html>
+  <div
+    id="reader"
+    data-pdf-url={pdfUrl}
+    style={`--light-color: ${book.data.lightColor}; --dark-color: ${book.data.darkColor}`}
+  >
+    <header id="toolbar">
+      <Button href={`/books/${book.id}`} color={book.data.darkColor}>
+        {"<"} Go back
+      </Button>
+      <div id="titles">
+        <h1 id="book-title">
+          {book.data.title}
+        </h1>
+        <p id="book-subtitle">{book.data.subtitle}</p>
+      </div>
+    </header>
+    <div id="spread">
+      <button
+        type="button"
+        class="page"
+        data-page="left"
+        data-empty="true"
+        data-active="false"
+        aria-label="Previous pages"
+      >
+        <canvas></canvas>
+      </button>
+      <button
+        type="button"
+        class="page"
+        data-page="right"
+        data-empty="true"
+        data-active="false"
+        aria-label="Next pages"
+      >
+        <canvas></canvas>
+      </button>
+    </div>
+  </div>
+</Html>
+
+<script>
+  import { initBookReader } from "../../../scripts/book-reader";
+
+  const root = document.getElementById("reader");
+  if (root) void initBookReader(root);
+</script>
+
+<style is:global>
+  html:has(#reader),
+  body:has(#reader) {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body:has(#reader) {
+    height: 100dvh;
+  }
+</style>
+
+<style>
+  #reader {
+    box-sizing: border-box;
+    height: 100dvh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 0.75rem;
+    padding: clamp(12px, 2vw, 28px);
+  }
+
+  #toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.25rem;
+    min-width: 0;
+  }
+
+  #titles {
+    min-width: 0;
+    color: var(--dark-color);
+  }
+
+  #series-title {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    opacity: 0.75;
+  }
+
+  #book-title {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  #book-subtitle {
+    font-weight: 500;
+    opacity: 0.8;
+    line-height: 1;
+    margin: 0;
+  }
+
+  #spread {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    align-items: center;
+  }
+
+  .page {
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    display: grid;
+    align-items: center;
+    cursor: default;
+  }
+
+  .page[data-page="left"] {
+    justify-items: end;
+  }
+
+  .page[data-page="right"] {
+    justify-items: start;
+  }
+
+  .page[data-active="true"] {
+    cursor: pointer;
+  }
+
+  .page[data-page="left"][data-active="true"] {
+    cursor: w-resize;
+  }
+
+  .page[data-page="right"][data-active="true"] {
+    cursor: e-resize;
+  }
+
+  .page[data-empty="true"] {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .page > canvas {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+  }
+</style>
