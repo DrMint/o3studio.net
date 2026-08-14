@@ -73,6 +73,14 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
           <Icon name="download" />
           Download
         </Button>
+        <button
+          type="button"
+          id="fullscreen-enter"
+          aria-label="Fullscreen"
+          title="Fullscreen"
+        >
+          <Icon name="fullscreen" />
+        </button>
       </div>
     </header>
     <label id="page-scrubber">
@@ -80,6 +88,15 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
       <input type="range" data-page-slider min="1" value="1" step="1" />
     </label>
     <div id="spread-area">
+      <button
+        type="button"
+        id="fullscreen-exit"
+        aria-label="Exit fullscreen"
+        title="Exit fullscreen"
+        hidden
+      >
+        <Icon name="fullscreen_exit" />
+      </button>
       <button
         type="button"
         id="turn-prev"
@@ -191,6 +208,12 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     margin-left: auto;
   }
 
+  #toolbar :global(a) {
+    box-sizing: border-box;
+    height: 50px;
+    padding-block: 0;
+  }
+
   #page-jump {
     display: flex;
     align-items: center;
@@ -201,10 +224,11 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
   }
 
   #page-jump input {
-    max-width: 6ch;
-    box-sizing: content-box;
+    box-sizing: border-box;
+    height: 50px;
+    max-width: 8ch;
     margin: 0;
-    padding: 0.35em 0.45em;
+    padding: 0 0.45em;
     border: 3px solid var(--dark-color);
     background: white;
     color: var(--dark-color);
@@ -214,8 +238,10 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
   }
 
   #zoom-controls {
+    box-sizing: border-box;
     display: flex;
     align-items: stretch;
+    height: 50px;
     border: 3px solid var(--dark-color);
     background: white;
     color: var(--dark-color);
@@ -224,7 +250,7 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
 
   #zoom-controls > button {
     margin: 0;
-    padding: 0.35em 0.65em;
+    padding: 0 0.65em;
     border: 0;
     background: transparent;
     color: inherit;
@@ -310,6 +336,54 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     overflow: hidden;
   }
 
+  #spread-area:fullscreen {
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    background-image: url("/paper2.webp");
+    background-size: 25cm;
+    background-repeat: round;
+  }
+
+  #fullscreen-enter,
+  #fullscreen-exit {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    width: 50px;
+    height: 50px;
+    border: 3px solid var(--dark-color);
+    background: white;
+    color: var(--dark-color);
+    font: inherit;
+    line-height: 1;
+    cursor: pointer;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #fullscreen-enter:hover,
+  #fullscreen-enter:focus-visible,
+  #fullscreen-exit:hover,
+  #fullscreen-exit:focus-visible {
+    background: var(--dark-color);
+    color: white;
+  }
+
+  #fullscreen-exit {
+    position: absolute;
+    top: clamp(12px, 2vw, 28px);
+    right: clamp(12px, 2vw, 28px);
+    z-index: 6;
+    display: none;
+  }
+
+  #spread-area:fullscreen #fullscreen-exit {
+    display: inline-flex;
+  }
+
   #turn-prev,
   #turn-next {
     position: absolute;
@@ -318,7 +392,9 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     transform: translateY(-50%);
     box-sizing: border-box;
     margin: 0;
-    padding: 0.45em;
+    padding: 0;
+    width: 50px;
+    height: 50px;
     border: 3px solid var(--dark-color);
     background: white;
     color: var(--dark-color);

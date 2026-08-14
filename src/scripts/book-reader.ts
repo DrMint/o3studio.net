@@ -94,6 +94,15 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   const zoomLabel = mustQuery(root, "[data-zoom-label]");
   const turnPrevBtn = mustQuery(root, "[data-turn='prev']") as HTMLButtonElement;
   const turnNextBtn = mustQuery(root, "[data-turn='next']") as HTMLButtonElement;
+  const fullscreenEnterBtn = mustQuery(
+    root,
+    "#fullscreen-enter",
+  ) as HTMLButtonElement;
+  const fullscreenExitBtn = mustQuery(
+    root,
+    "#fullscreen-exit",
+  ) as HTMLButtonElement;
+  const spreadArea = mustQuery(root, "#spread-area");
 
   const pdf = await getDocument({ url: pdfUrl }).promise;
   const pageCount = pdf.numPages;
@@ -125,6 +134,40 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
 
   turnPrevBtn.addEventListener("click", () => goSpread(-1));
   turnNextBtn.addEventListener("click", () => goSpread(1));
+
+  function isSpreadFullscreen(): boolean {
+    return document.fullscreenElement === spreadArea;
+  }
+
+  function syncFullscreenUi() {
+    fullscreenExitBtn.hidden = !isSpreadFullscreen();
+  }
+
+  async function enterFullscreen() {
+    if (isSpreadFullscreen()) return;
+    try {
+      await spreadArea.requestFullscreen();
+    } catch {
+      // User gesture denied / unsupported — ignore.
+    }
+  }
+
+  async function exitFullscreen() {
+    if (!document.fullscreenElement) return;
+    try {
+      await document.exitFullscreen();
+    } catch {
+      // Already exited / unsupported — ignore.
+    }
+  }
+
+  fullscreenEnterBtn.addEventListener("click", () => void enterFullscreen());
+  fullscreenExitBtn.addEventListener("click", () => void exitFullscreen());
+  document.addEventListener("fullscreenchange", () => {
+    syncFullscreenUi();
+    void showSpread();
+  });
+  syncFullscreenUi();
 
   /** Accumulate trackpad/wheel deltas so one flick doesn't skip many spreads. */
   const WHEEL_PAGE_THRESHOLD = 60;
@@ -171,7 +214,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   }
 
   // Buttons sit above the scroller; keep wheel-zoom/pan/page-turn working over them.
-  for (const btn of [turnPrevBtn, turnNextBtn]) {
+  for (const btn of [turnPrevBtn, turnNextBtn, fullscreenExitBtn]) {
     btn.addEventListener("wheel", onReaderWheel, { passive: false });
   }
 
