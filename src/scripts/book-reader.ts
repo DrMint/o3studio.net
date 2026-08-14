@@ -65,11 +65,30 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     leftBtn.dataset.active = String(left !== null && canPrev);
     rightBtn.dataset.active = String(right !== null && canNext);
 
+    const closed = left === null || right === null;
+    const firstPage = left ?? right!;
+    const lastPage = right ?? left!;
+    const pagesRead = firstPage - 1;
+    const pagesRemaining = pageCount - lastPage;
+    const maxEdge = Math.min(
+      40,
+      Math.min(leftBtn.clientWidth, rightBtn.clientWidth) * 0.14,
+    );
+    const edgeScale = maxEdge / Math.max(pageCount - 1, 1);
+    const leftEdge = closed ? 0 : edgeScale * pagesRead;
+    const rightEdge = closed ? 0 : edgeScale * pagesRemaining;
+
+    leftBtn.style.setProperty("--edge-width", `${leftEdge}px`);
+    rightBtn.style.setProperty("--edge-width", `${rightEdge}px`);
+
     const samplePage = await pdf.getPage(samplePageNumber);
     if (token !== renderToken) return;
 
     const base = samplePage.getViewport({ scale: 1 });
-    const maxWidth = Math.min(leftBtn.clientWidth, rightBtn.clientWidth);
+    const maxWidth = Math.min(
+      leftBtn.clientWidth - leftEdge,
+      rightBtn.clientWidth - rightEdge,
+    );
     const maxHeight = Math.min(leftBtn.clientHeight, rightBtn.clientHeight);
     if (maxWidth < 1 || maxHeight < 1) return;
 
