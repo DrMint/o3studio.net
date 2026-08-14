@@ -117,6 +117,7 @@ const downloadPdfUrl = `/pdf/download/${book.id}.pdf`;
             >
               <div class="page" data-page="left" data-empty="true">
                 <span class="page-shell">
+                  <span class="page-cover" aria-hidden="true"></span>
                   <span class="page-edge" aria-hidden="true"></span>
                   <span class="page-face">
                     <canvas></canvas>
@@ -135,6 +136,7 @@ const downloadPdfUrl = `/pdf/download/${book.id}.pdf`;
                     <div class="textLayer" hidden></div>
                   </span>
                   <span class="page-edge" aria-hidden="true"></span>
+                  <span class="page-cover" aria-hidden="true"></span>
                 </span>
                 <span class="page-tint" aria-hidden="true"></span>
                 <span class="page-fold" aria-hidden="true"></span>
@@ -603,6 +605,59 @@ const downloadPdfUrl = `/pdf/download/${book.id}.pdf`;
 
   .page[data-page="right"] .page-edge {
     transform: scaleX(-1);
+  }
+
+  /* Outer hardcover strip: PDF cover edge, mirrored. */
+  .page-cover {
+    position: relative;
+    flex: 0 0 auto;
+    width: calc(var(--cover-ratio, 0) * var(--page-face-width, 0px));
+    background-color: var(--dark-color);
+    background-image: var(--cover-image);
+    background-repeat: no-repeat;
+    background-size: calc(1 / max(var(--cover-ratio), 0.0001) * 100%) 100%;
+    transform: scaleX(-1);
+  }
+
+  .page-cover::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .page[data-page="left"] .page-cover {
+    /* Right edge of the front cover, then mirrored. */
+    background-position: right center;
+  }
+
+  .page[data-page="right"] .page-cover {
+    /* Left edge of the back cover, then mirrored. */
+    background-position: left center;
+  }
+
+  .page[data-page="left"] .page-cover::after {
+    background: linear-gradient(
+      to right,
+      rgb(0 0 0 / min(0.4, calc(0.6 * var(--stack-shade, 0)))) 0%,
+      rgb(0 0 0 / calc(0.35 * var(--stack-shade, 0))) 10%,
+      rgb(0 0 0 / 0) 80%,
+      rgb(0 0 0 / 0.3) 100%
+    );
+  }
+
+  .page[data-page="right"] .page-cover::after {
+    background: linear-gradient(
+      to left,
+      rgb(0 0 0 / min(0.4, calc(0.6 * var(--stack-shade, 0)))) 0%,
+      rgb(0 0 0 / calc(0.35 * var(--stack-shade, 0))) 10%,
+      rgb(0 0 0 / 0) 80%,
+      rgb(0 0 0 / 0.3) 100%
+    );
+  }
+
+  #book[data-closed="true"] .page-cover {
+    display: none;
   }
 
   .page-face {
