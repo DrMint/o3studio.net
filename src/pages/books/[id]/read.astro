@@ -85,6 +85,10 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
 </script>
 
 <style is:global>
+  html:has(#reader) {
+    background-image: none;
+  }
+
   html:has(#reader),
   body:has(#reader) {
     margin: 0;
@@ -219,6 +223,17 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     flex: 0 0 auto;
     display: block;
     overflow: hidden;
+  }
+
+  #book:not([data-cover]) .page-face::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: url("/paper-book.webp");
+    opacity: 0.5;
+    mix-blend-mode: exclusion;
+    background-size: 20vmin 20vmin;
   }
 
   .page-face::after {
