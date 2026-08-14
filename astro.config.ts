@@ -15,6 +15,7 @@ export default defineConfig({
           "menu-book",
           "fullscreen",
           "fullscreen-exit",
+          "devices",
         ],
       },
     }),
