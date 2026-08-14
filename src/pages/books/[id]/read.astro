@@ -509,7 +509,7 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
 
   .page-edge {
     flex: 0 0 auto;
-    width: var(--edge-width, 0px);
+    width: calc(var(--edge-ratio, 0) * var(--page-face-width, 0px));
     background-color: #d0d0d0;
     background-image: url("/side-book.webp");
     background-repeat: repeat-x;

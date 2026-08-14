@@ -35,6 +35,11 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+/**
+ * Side-stack thickness as a fraction of page-face width, per page in the stack.
+ * e.g. 0.001 → 100 unread pages ≈ 10% of the face width.
+ */
+const EDGE_WIDTH_PER_PAGE = 0.0003;
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 4;
 const ZOOM_STEP = 0.25;
@@ -599,15 +604,14 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     const lastPage = right ?? left!;
     const pagesRead = firstPage - 1;
     const pagesRemaining = pageCount - lastPage;
-    const maxEdge = Math.min(40, (spreadEl.clientWidth / 2) * 0.14);
-    const edgeScale = maxEdge / Math.max(pageCount - 1, 1);
-    const leftEdge = closed ? 0 : edgeScale * pagesRead;
-    const rightEdge = closed ? 0 : edgeScale * pagesRemaining;
+    const leftRatio = closed ? 0 : pagesRead * EDGE_WIDTH_PER_PAGE;
+    const rightRatio = closed ? 0 : pagesRemaining * EDGE_WIDTH_PER_PAGE;
 
     const samplePage = await pdf.getPage(samplePageNumber);
     if (token !== renderToken) return;
 
     const base = samplePage.getViewport({ scale: 1 });
+    const aspect = base.height / base.width;
     const stageStyle = getComputedStyle(mustQuery(root, "#spread-stage"));
     const padX =
       Number.parseFloat(stageStyle.paddingLeft) +
@@ -615,17 +619,27 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     const padY =
       Number.parseFloat(stageStyle.paddingTop) +
       Number.parseFloat(stageStyle.paddingBottom);
-    const maxWidth = (spreadEl.clientWidth - padX - leftEdge - rightEdge) / 2;
-    const maxHeight = spreadEl.clientHeight - padY;
-    if (maxWidth < 1 || maxHeight < 1) return;
+    const availW = spreadEl.clientWidth - padX;
+    const availH = spreadEl.clientHeight - padY;
+    if (availW < 1 || availH < 1) return;
 
-    const fit = Math.min(maxWidth / base.width, maxHeight / base.height);
-    const cssWidth = Math.floor(base.width * fit * zoom);
-    const cssHeight = Math.floor(base.height * fit * zoom);
+    // Faces + side edges share the width: n*w + (rL+rR)*w ≤ availW.
+    const pageSlots = closed ? 1 : 2;
+    const widthFromViewport = availW / (pageSlots + leftRatio + rightRatio);
+    const widthFromHeight = availH / aspect;
+    const cssWidth = Math.floor(
+      Math.min(widthFromViewport, widthFromHeight) * zoom,
+    );
+    const cssHeight = Math.floor(cssWidth * aspect);
+    if (cssWidth < 1 || cssHeight < 1) return;
     const epoch = syncRasterLayout(cssWidth, cssHeight);
 
-    leftBtn.style.setProperty("--edge-width", `${leftEdge * zoom}px`);
-    rightBtn.style.setProperty("--edge-width", `${rightEdge * zoom}px`);
+    // Ratio only depends on reading position; face width updates on resize/zoom
+    // and CSS keeps edge thickness proportional.
+    leftBtn.style.setProperty("--edge-ratio", String(leftRatio));
+    rightBtn.style.setProperty("--edge-ratio", String(rightRatio));
+    leftBtn.style.setProperty("--page-face-width", `${cssWidth}px`);
+    rightBtn.style.setProperty("--page-face-width", `${cssWidth}px`);
 
     // Drop CSS preview before swapping in the new raster size so we don't
     // compound transform scale with the larger layout box.
