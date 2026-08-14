@@ -168,9 +168,23 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   fullscreenExitBtn.addEventListener("click", () => void exitFullscreen());
   document.addEventListener("fullscreenchange", () => {
     syncFullscreenUi();
-    void showSpread();
+    // Layout often isn't final yet on fullscreenchange — wait for paint.
+    scheduleFit();
   });
   syncFullscreenUi();
+
+  let fitFrame = 0;
+  function scheduleFit() {
+    window.cancelAnimationFrame(fitFrame);
+    fitFrame = window.requestAnimationFrame(() => {
+      fitFrame = window.requestAnimationFrame(() => {
+        if (spreadEl.clientWidth < 1 || spreadEl.clientHeight < 1) return;
+        void showSpread();
+      });
+    });
+  }
+
+  window.addEventListener("resize", scheduleFit);
 
   /** One spread per gesture — trackpads send large deltas that would skip pages. */
   const WHEEL_PAGE_THRESHOLD = 40;
@@ -378,9 +392,10 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     editingPageInput = false;
   });
 
-  window.addEventListener("resize", () => void showSpread());
-
   await showSpread();
+  // Observe after the first paint so the initial RO callback can't cancel it
+  // with a zero-size layout measurement.
+  new ResizeObserver(scheduleFit).observe(spreadEl);
 
   function displayedPage(): number {
     const { left, right } = pagesForSpread(spread, pageCount);
@@ -632,6 +647,10 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   }
 
   async function showSpread() {
+    // Don't bump renderToken until we know the stage has a real size — otherwise
+    // a zero-size fit (common right as fullscreen/layout settles) cancels a good render.
+    if (spreadEl.clientWidth < 1 || spreadEl.clientHeight < 1) return;
+
     const token = ++renderToken;
     const { left, right } = pagesForSpread(spread, pageCount);
     const canPrev = spread > 0;
