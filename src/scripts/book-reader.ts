@@ -41,6 +41,9 @@ const ZOOM_MAX = 4;
 const ZOOM_STEP = 0.25;
 /** Wait for zoom gestures to settle before asking pdf.js to re-rasterize. */
 const ZOOM_SETTLE_MS = 140;
+/** Keep current ± this many spreads rasterized for instant page turns. */
+const PREFETCH_SPREAD_RADIUS = 1;
+const RASTER_CACHE_LIMIT = 12;
 
 export async function initBookReader(root: HTMLElement): Promise<void> {
   const pdfUrl = root.dataset.pdfUrl;
@@ -75,10 +78,16 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   let renderedZoom = 1;
   let renderedLayout = { w: 0, h: 0 };
   let renderToken = 0;
+  /** Bumped when CSS page size / DPR changes so stale prefetches stop. */
+  let layoutEpoch = 0;
+  let lastRasterLayout: { w: number; h: number; dpr: number } | null = null;
   let scrubTimer: ReturnType<typeof setTimeout> | undefined;
   let zoomTimer: ReturnType<typeof setTimeout> | undefined;
   const renderTasks = new Map<HTMLCanvasElement, RenderTask>();
   const textLayers = new Map<HTMLElement, TextLayer>();
+  /** Offscreen rasters keyed by page + layout; avoids blanking the visible canvas. */
+  const rasterCache = new Map<string, HTMLCanvasElement>();
+  const inflightRasters = new Map<string, Promise<HTMLCanvasElement | null>>();
 
   pageInput.max = String(pageCount);
   pageSlider.max = String(pageCount);
@@ -332,6 +341,151 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     container.hidden = true;
   }
 
+  function rasterKey(
+    pageNumber: number,
+    cssWidth: number,
+    cssHeight: number,
+    dpr: number,
+  ): string {
+    return `${pageNumber}:${cssWidth}x${cssHeight}@${dpr}`;
+  }
+
+  function rememberRaster(key: string, canvas: HTMLCanvasElement) {
+    rasterCache.delete(key);
+    rasterCache.set(key, canvas);
+    while (rasterCache.size > RASTER_CACHE_LIMIT) {
+      const oldest = rasterCache.keys().next().value;
+      if (oldest === undefined) break;
+      rasterCache.delete(oldest);
+    }
+  }
+
+  function invalidateRasterCache() {
+    layoutEpoch++;
+    rasterCache.clear();
+    inflightRasters.clear();
+  }
+
+  function syncRasterLayout(cssWidth: number, cssHeight: number): number {
+    const dpr = window.devicePixelRatio || 1;
+    const prev = lastRasterLayout;
+    if (
+      !prev ||
+      prev.w !== cssWidth ||
+      prev.h !== cssHeight ||
+      prev.dpr !== dpr
+    ) {
+      invalidateRasterCache();
+      lastRasterLayout = { w: cssWidth, h: cssHeight, dpr };
+    }
+    return layoutEpoch;
+  }
+
+  async function getRaster(
+    doc: PDFDocumentProxy,
+    pageNumber: number,
+    cssWidth: number,
+    cssHeight: number,
+    token?: number,
+  ): Promise<HTMLCanvasElement | null> {
+    const dpr = window.devicePixelRatio || 1;
+    const key = rasterKey(pageNumber, cssWidth, cssHeight, dpr);
+    const cached = rasterCache.get(key);
+    if (cached) {
+      rememberRaster(key, cached);
+      return cached;
+    }
+
+    const existing = inflightRasters.get(key);
+    if (existing) {
+      const shared = await existing;
+      if (token !== undefined && token !== renderToken) return null;
+      return shared;
+    }
+
+    const pending = (async (): Promise<HTMLCanvasElement | null> => {
+      const epochAtStart = layoutEpoch;
+      const page: PDFPageProxy = await doc.getPage(pageNumber);
+      if (token !== undefined && token !== renderToken) return null;
+      if (epochAtStart !== layoutEpoch) return null;
+
+      const base = page.getViewport({ scale: 1 });
+      const cssScale = cssWidth / base.width;
+      const canvasViewport = page.getViewport({
+        scale: cssScale * dpr,
+      });
+
+      const offscreen = document.createElement("canvas");
+      offscreen.width = Math.floor(canvasViewport.width);
+      offscreen.height = Math.floor(canvasViewport.height);
+      const context = offscreen.getContext("2d");
+      if (!context) return null;
+
+      const task = page.render({
+        canvas: offscreen,
+        canvasContext: context,
+        viewport: canvasViewport,
+      });
+      renderTasks.set(offscreen, task);
+      try {
+        await task.promise;
+      } catch (error) {
+        if (error instanceof RenderingCancelledException) return null;
+        throw error;
+      } finally {
+        if (renderTasks.get(offscreen) === task) renderTasks.delete(offscreen);
+      }
+
+      if (token !== undefined && token !== renderToken) return null;
+      if (epochAtStart !== layoutEpoch) return null;
+
+      rememberRaster(key, offscreen);
+      return offscreen;
+    })();
+
+    inflightRasters.set(key, pending);
+    try {
+      return await pending;
+    } finally {
+      if (inflightRasters.get(key) === pending) inflightRasters.delete(key);
+    }
+  }
+
+  function pagesAroundSpread(center: number): number[] {
+    const pages = new Set<number>();
+    const max = maxSpread(pageCount);
+    for (
+      let s = center - PREFETCH_SPREAD_RADIUS;
+      s <= center + PREFETCH_SPREAD_RADIUS;
+      s++
+    ) {
+      if (s < 0 || s > max) continue;
+      const { left, right } = pagesForSpread(s, pageCount);
+      if (left !== null) pages.add(left);
+      if (right !== null) pages.add(right);
+    }
+    return [...pages];
+  }
+
+  function prefetchAdjacent(
+    center: number,
+    cssWidth: number,
+    cssHeight: number,
+    epoch: number,
+  ) {
+    const pages = pagesAroundSpread(center).filter((pageNumber) => {
+      const { left, right } = pagesForSpread(center, pageCount);
+      return pageNumber !== left && pageNumber !== right;
+    });
+
+    void (async () => {
+      for (const pageNumber of pages) {
+        if (epoch !== layoutEpoch) return;
+        await getRaster(pdf, pageNumber, cssWidth, cssHeight);
+      }
+    })();
+  }
+
   async function showSpread() {
     const token = ++renderToken;
     const { left, right } = pagesForSpread(spread, pageCount);
@@ -381,6 +535,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     const fit = Math.min(maxWidth / base.width, maxHeight / base.height);
     const cssWidth = Math.floor(base.width * fit * zoom);
     const cssHeight = Math.floor(base.height * fit * zoom);
+    const epoch = syncRasterLayout(cssWidth, cssHeight);
 
     leftBtn.style.setProperty("--edge-width", `${leftEdge * zoom}px`);
     rightBtn.style.setProperty("--edge-width", `${rightEdge * zoom}px`);
@@ -421,6 +576,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
       h: bookEl.offsetHeight,
     };
     applyZoomPreview();
+    prefetchAdjacent(spread, cssWidth, cssHeight, epoch);
   }
 
   async function renderPage(
@@ -432,50 +588,33 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     cssHeight: number,
     token: number,
   ) {
-    // Always cancel before touching the canvas — overlapping pdf.js draws
-    // corrupt size/orientation when scrubbing quickly.
-    cancelRender(canvas);
     cancelTextLayer(textContainer);
+
+    const raster = await getRaster(
+      doc,
+      pageNumber,
+      cssWidth,
+      cssHeight,
+      token,
+    );
+    if (!raster || token !== renderToken) return;
+
+    // Resize clears the bitmap; blit the cached raster in the same turn so
+    // cache hits never show a white frame.
+    canvas.width = raster.width;
+    canvas.height = raster.height;
+    canvas.style.width = `${cssWidth}px`;
+    canvas.style.height = `${cssHeight}px`;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    context.drawImage(raster, 0, 0);
 
     const page: PDFPageProxy = await doc.getPage(pageNumber);
     if (token !== renderToken) return;
 
-    cancelRender(canvas);
-    cancelTextLayer(textContainer);
-    if (token !== renderToken) return;
-
     const base = page.getViewport({ scale: 1 });
     const cssScale = cssWidth / base.width;
-    const outputScale = window.devicePixelRatio || 1;
-    const canvasViewport = page.getViewport({
-      scale: cssScale * outputScale,
-    });
     const textViewport = page.getViewport({ scale: cssScale });
-
-    canvas.width = Math.floor(canvasViewport.width);
-    canvas.height = Math.floor(canvasViewport.height);
-    canvas.style.width = `${cssWidth}px`;
-    canvas.style.height = `${cssHeight}px`;
-
-    const context = canvas.getContext("2d");
-    if (!context) return;
-
-    const task = page.render({
-      canvas,
-      canvasContext: context,
-      viewport: canvasViewport,
-    });
-    renderTasks.set(canvas, task);
-    try {
-      await task.promise;
-    } catch (error) {
-      if (error instanceof RenderingCancelledException) return;
-      throw error;
-    } finally {
-      if (renderTasks.get(canvas) === task) renderTasks.delete(canvas);
-    }
-
-    if (token !== renderToken) return;
 
     textContainer.hidden = false;
     textContainer.replaceChildren();
