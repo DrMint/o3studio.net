@@ -25,7 +25,7 @@ export async function getStaticPaths() {
 
 const { book, series } = Astro.props;
 const { Content: SeriesContent } = await render(series);
-const pdfUrl = `/pdf/${book.id}.pdf`;
+const pdfUrl = `/pdf/download/${book.id}.pdf`;
 ---
 
 <Html>

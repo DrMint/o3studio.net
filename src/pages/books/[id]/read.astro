@@ -21,14 +21,15 @@ export async function getStaticPaths() {
 }
 
 const { book } = Astro.props;
-const pdfUrl = `/pdf/${book.id}.pdf`;
+const readerPdfUrl = `/pdf/reader/${book.id}.pdf`;
+const downloadPdfUrl = `/pdf/download/${book.id}.pdf`;
 ---
 
 <Html>
   <div
     id="reader"
     data-book-id={book.id}
-    data-pdf-url={pdfUrl}
+    data-pdf-url={readerPdfUrl}
     style={`--light-color: ${book.data.lightColor}; --dark-color: ${book.data.darkColor}`}
   >
     <header id="toolbar">
@@ -66,7 +67,7 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
           </button>
         </div>
         <Button
-          href={pdfUrl}
+          href={downloadPdfUrl}
           download={`${book.id}.pdf`}
           color={book.data.darkColor}
         >
@@ -167,7 +168,7 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
       </p>
       <div id="small-screen-actions">
         <Button
-          href={pdfUrl}
+          href={downloadPdfUrl}
           download={`${book.id}.pdf`}
           color={book.data.darkColor}
           primary
@@ -739,7 +740,9 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
       rgb(0 0 0 / 0.1) 3%,
       rgb(0 0 0 / 0.25) 3.5%,
       rgb(0 0 0 / 0.3) 4.5%,
-      transparent 5.2%
+      transparent 5.2%,
+      transparent 99%,
+      rgb(0 0 0 / 0.3) 100%
     );
   }
 
@@ -751,7 +754,9 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
       rgb(0 0 0 / 0.1) 3%,
       rgb(0 0 0 / 0.25) 3.5%,
       rgb(0 0 0 / 0.3) 4.5%,
-      transparent 5.2%
+      transparent 5.2%,
+      transparent 99%,
+      rgb(0 0 0 / 0.3) 100%
     );
   }
 </style>
