@@ -399,7 +399,7 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
   #book:not([data-closed="true"]),
   #book[data-closed="true"] .page:not([data-empty="true"]) .page-shell {
     box-shadow:
-      0 0.1em 0.3em rgb(0 0 0 / 70%),
+      0 0.2em 0.3em rgb(0 0 0 / 70%),
       0 1em 1em rgb(0 0 0 / 30%),
       0 2em 2em rgb(0 0 0 / 27%),
       0 12em 12em rgb(0 0 0 / 50%);
@@ -419,8 +419,7 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
   }
 
   .page[data-empty="true"] {
-    visibility: hidden;
-    pointer-events: none;
+    display: none;
   }
 
   .page-shell {
