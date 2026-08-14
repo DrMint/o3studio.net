@@ -35,7 +35,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-const SCRUB_DEBOUNCE_MS = 80;
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 4;
 const ZOOM_STEP = 0.25;
@@ -119,7 +118,6 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   /** Bumped when CSS page size / DPR changes so stale prefetches stop. */
   let layoutEpoch = 0;
   let lastRasterLayout: { w: number; h: number; dpr: number } | null = null;
-  let scrubTimer: ReturnType<typeof setTimeout> | undefined;
   let zoomTimer: ReturnType<typeof setTimeout> | undefined;
   const renderTasks = new Map<HTMLCanvasElement, RenderTask>();
   const textLayers = new Map<HTMLElement, TextLayer>();
@@ -249,11 +247,11 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   });
 
   pageSlider.addEventListener("input", () => {
-    scheduleScrub(Number(pageSlider.value));
+    goToPage(Number(pageSlider.value));
   });
 
   pageSlider.addEventListener("change", () => {
-    flushScrub(Number(pageSlider.value));
+    goToPage(Number(pageSlider.value));
   });
 
   zoomInBtn.addEventListener("click", () => {
@@ -331,29 +329,8 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     return left ?? right ?? 1;
   }
 
-  function scheduleScrub(page: number) {
-    if (!Number.isFinite(page)) return;
-    spread = spreadForPage(clamp(Math.round(page), 1, pageCount));
-    pageInput.value = String(displayedPage());
-    window.clearTimeout(scrubTimer);
-    scrubTimer = setTimeout(() => {
-      scrubTimer = undefined;
-      void showSpread();
-    }, SCRUB_DEBOUNCE_MS);
-  }
-
-  function flushScrub(page: number) {
-    window.clearTimeout(scrubTimer);
-    scrubTimer = undefined;
-    if (!Number.isFinite(page)) return;
-    spread = spreadForPage(clamp(Math.round(page), 1, pageCount));
-    void showSpread();
-  }
-
   function goSpread(delta: number) {
-    window.clearTimeout(scrubTimer);
     window.clearTimeout(zoomTimer);
-    scrubTimer = undefined;
     zoomTimer = undefined;
     const next = clamp(spread + delta, 0, maxSpread(pageCount));
     if (next === spread) {
@@ -365,9 +342,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   }
 
   function goToPage(page: number) {
-    window.clearTimeout(scrubTimer);
     window.clearTimeout(zoomTimer);
-    scrubTimer = undefined;
     zoomTimer = undefined;
     if (!Number.isFinite(page)) {
       syncPager();

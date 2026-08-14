@@ -13,6 +13,8 @@ export default defineConfig({
           "chevron-left",
           "chevron-right",
           "menu-book",
+          "fullscreen",
+          "fullscreen-exit",
         ],
       },
     }),
