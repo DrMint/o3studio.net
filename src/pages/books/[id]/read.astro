@@ -104,6 +104,10 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
                     <div class="textLayer" hidden></div>
                   </span>
                 </span>
+                <span class="page-tint" aria-hidden="true"></span>
+                <span class="page-fold" aria-hidden="true"></span>
+                <span class="page-lighting" aria-hidden="true"></span>
+                <span class="page-specular" aria-hidden="true"></span>
               </div>
               <div class="page" data-page="right" data-empty="true">
                 <span class="page-shell">
@@ -113,6 +117,10 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
                   </span>
                   <span class="page-edge" aria-hidden="true"></span>
                 </span>
+                <span class="page-tint" aria-hidden="true"></span>
+                <span class="page-fold" aria-hidden="true"></span>
+                <span class="page-lighting" aria-hidden="true"></span>
+                <span class="page-specular" aria-hidden="true"></span>
               </div>
             </div>
           </div>
@@ -384,20 +392,6 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     transform-origin: 0 0;
   }
 
-  #book::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: 4;
-    pointer-events: none;
-    background: #ebe7e4;
-    mix-blend-mode: multiply;
-  }
-
-  #book[data-cover]::after {
-    display: none;
-  }
-
   #book.is-preview-zoom {
     will-change: transform;
   }
@@ -421,6 +415,7 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     display: block;
     line-height: 0;
     cursor: default;
+    position: relative;
   }
 
   .page[data-empty="true"] {
@@ -467,6 +462,7 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     z-index: 1;
   }
 
+  /* Apply order: paper → tint → fold → lighting → specular */
   .page-face::before {
     content: "";
     position: absolute;
@@ -479,36 +475,101 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     background-size: 20vmin 20vmin;
   }
 
-  .page-face::after {
-    content: "";
+  .page-tint {
     position: absolute;
     inset: 0;
     z-index: 3;
     pointer-events: none;
+    background: #fffbf9;
+    mix-blend-mode: multiply;
   }
 
-  .page[data-page="left"] .page-face::after {
-    background: linear-gradient(
-      to right,
-      transparent 80%,
-      rgb(100 70 50 / 0.01) 90%,
-      rgb(100 70 50 / 0.05) 95%,
-      rgb(100 70 50 / 0.1) 99%,
-      rgb(100 70 50 / 0.15) 99.5%,
-      rgb(100 70 50 / 0.3) 100%
-    );
+  #book[data-cover] .page-tint {
+    display: none;
   }
 
-  .page[data-page="right"] .page-face::after {
-    background: linear-gradient(
-      to left,
-      transparent 80%,
-      rgb(100 70 50 / 0.01) 90%,
-      rgb(100 70 50 / 0.05) 95%,
-      rgb(100 70 50 / 0.1) 99%,
-      rgb(100 70 50 / 0.15) 99.5%,
-      rgb(100 70 50 / 0.3) 100%
-    );
+  .page-fold {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    background-image: url("/bookFold.webp");
+    background-repeat: no-repeat;
+    background-size: 200% 100%;
+    mix-blend-mode: multiply;
+  }
+
+  .page[data-page="left"] .page-fold {
+    background-position: left center;
+  }
+
+  .page[data-page="right"] .page-fold {
+    background-position: right center;
+  }
+
+  #book[data-cover] .page-fold {
+    display: none;
+  }
+
+  .page-lighting {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    background-image: url("/lightingDoublePage.webp");
+    background-repeat: no-repeat;
+    background-size: 200% 100%;
+    mix-blend-mode: multiply;
+    opacity: 0.3;
+  }
+
+  .page[data-page="left"] .page-lighting {
+    background-position: left center;
+  }
+
+  .page[data-page="right"] .page-lighting {
+    background-position: right center;
+  }
+
+  #book[data-cover] .page-lighting {
+    background-image: url("/lightingSinglePage.webp");
+    background-size: 100% 100%;
+    background-position: center;
+  }
+
+  .page-specular {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    pointer-events: none;
+    background-image: url("/specularDoublePage.webp");
+    background-repeat: no-repeat;
+    background-size: 200% 100%;
+    background-blend-mode: multiply;
+    mix-blend-mode: soft-light;
+    opacity: 0.5;
+  }
+
+  .page[data-page="left"] .page-specular {
+    background-position: left center;
+  }
+
+  .page[data-page="right"] .page-specular {
+    background-position: right center;
+  }
+
+  #book[data-cover] .page-specular {
+    background-image: url("/specularSinglePage.webp");
+    background-size: 100% 100%;
+    background-position: center;
+  }
+
+  .page-face::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 7;
+    pointer-events: none;
   }
 
   #book[data-cover="front"] .page[data-page="right"] .page-face::after {
