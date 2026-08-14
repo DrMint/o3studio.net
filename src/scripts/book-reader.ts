@@ -36,12 +36,18 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 const SCRUB_DEBOUNCE_MS = 80;
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 4;
+const ZOOM_STEP = 0.25;
+/** Wait for zoom gestures to settle before asking pdf.js to re-rasterize. */
+const ZOOM_SETTLE_MS = 140;
 
 export async function initBookReader(root: HTMLElement): Promise<void> {
   const pdfUrl = root.dataset.pdfUrl;
   if (!pdfUrl) throw new Error("Missing data-pdf-url");
 
   const spreadEl = mustQuery(root, "#spread");
+  const zoomShell = mustQuery(root, "#book-zoom-shell");
   const bookEl = mustQuery(root, "#book");
   const leftBtn = mustQuery(root, "[data-page='left']");
   const rightBtn = mustQuery(root, "[data-page='right']");
@@ -54,18 +60,28 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   const pageInput = mustQuery(root, "[data-page-input]") as HTMLInputElement;
   const pageSlider = mustQuery(root, "[data-page-slider]") as HTMLInputElement;
   const pageCountLabel = mustQuery(root, "[data-page-count]");
+  const zoomInBtn = mustQuery(root, "[data-zoom-in]");
+  const zoomOutBtn = mustQuery(root, "[data-zoom-out]");
+  const zoomResetBtn = mustQuery(root, "[data-zoom-reset]");
+  const zoomLabel = mustQuery(root, "[data-zoom-label]");
 
   const pdf = await getDocument({ url: pdfUrl }).promise;
   const pageCount = pdf.numPages;
   let spread = 0;
+  let zoom = 1;
+  /** Zoom level of the canvases currently on screen. */
+  let renderedZoom = 1;
+  let renderedLayout = { w: 0, h: 0 };
   let renderToken = 0;
   let scrubTimer: ReturnType<typeof setTimeout> | undefined;
+  let zoomTimer: ReturnType<typeof setTimeout> | undefined;
   const renderTasks = new Map<HTMLCanvasElement, RenderTask>();
   const textLayers = new Map<HTMLElement, TextLayer>();
 
   pageInput.max = String(pageCount);
   pageSlider.max = String(pageCount);
   pageCountLabel.textContent = `/ ${pageCount}`;
+  syncZoomUi();
 
   bindPageTurn(leftBtn, () => {
     if (spread <= 0) return;
@@ -86,6 +102,27 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   pageSlider.addEventListener("change", () => {
     flushScrub(Number(pageSlider.value));
   });
+
+  zoomInBtn.addEventListener("click", () => {
+    setZoom(zoom + ZOOM_STEP);
+  });
+  zoomOutBtn.addEventListener("click", () => {
+    setZoom(zoom - ZOOM_STEP);
+  });
+  zoomResetBtn.addEventListener("click", () => {
+    setZoom(1);
+  });
+
+  spreadEl.addEventListener(
+    "wheel",
+    (event) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
+      setZoom(zoom * factor, true);
+    },
+    { passive: false },
+  );
 
   let editingPageInput = false;
 
@@ -171,7 +208,9 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
 
   function goSpread(delta: number) {
     window.clearTimeout(scrubTimer);
+    window.clearTimeout(zoomTimer);
     scrubTimer = undefined;
+    zoomTimer = undefined;
     const next = clamp(spread + delta, 0, maxSpread(pageCount));
     if (next === spread) {
       syncPager();
@@ -183,7 +222,9 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
 
   function goToPage(page: number) {
     window.clearTimeout(scrubTimer);
+    window.clearTimeout(zoomTimer);
     scrubTimer = undefined;
+    zoomTimer = undefined;
     if (!Number.isFinite(page)) {
       syncPager();
       return;
@@ -202,6 +243,49 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     const currentPage = displayedPage();
     pageInput.value = String(currentPage);
     pageSlider.value = String(currentPage);
+  }
+
+  function syncZoomUi() {
+    const rounded = Math.round(zoom * 100);
+    zoomLabel.textContent = `${rounded}%`;
+    bookEl.dataset.zoomed = zoom > 1.001 ? "true" : "false";
+    (zoomOutBtn as HTMLButtonElement).disabled = zoom <= ZOOM_MIN + 0.001;
+    (zoomInBtn as HTMLButtonElement).disabled = zoom >= ZOOM_MAX - 0.001;
+  }
+
+  function applyZoomPreview() {
+    const scale = zoom / renderedZoom;
+    if (!renderedLayout.w || Math.abs(scale - 1) < 0.001) {
+      bookEl.style.transform = "";
+      zoomShell.style.width = "";
+      zoomShell.style.height = "";
+      bookEl.classList.remove("is-preview-zoom");
+      return;
+    }
+    zoomShell.style.width = `${renderedLayout.w * scale}px`;
+    zoomShell.style.height = `${renderedLayout.h * scale}px`;
+    bookEl.style.transform = `scale(${scale})`;
+    bookEl.classList.add("is-preview-zoom");
+  }
+
+  function setZoom(next: number, fromWheel = false) {
+    if (fromWheel) {
+      zoom = clamp(Math.round(next * 100) / 100, ZOOM_MIN, ZOOM_MAX);
+    } else {
+      zoom = clamp(
+        Math.round(next / ZOOM_STEP) * ZOOM_STEP,
+        ZOOM_MIN,
+        ZOOM_MAX,
+      );
+    }
+    syncZoomUi();
+    // Instant CSS scale while pdf.js catches up at settle time.
+    applyZoomPreview();
+    window.clearTimeout(zoomTimer);
+    zoomTimer = setTimeout(() => {
+      zoomTimer = undefined;
+      void showSpread();
+    }, ZOOM_SETTLE_MS);
   }
 
   function cancelRender(canvas: HTMLCanvasElement) {
@@ -255,23 +339,38 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     const leftEdge = closed ? 0 : edgeScale * pagesRead;
     const rightEdge = closed ? 0 : edgeScale * pagesRemaining;
 
-    leftBtn.style.setProperty("--edge-width", `${leftEdge}px`);
-    rightBtn.style.setProperty("--edge-width", `${rightEdge}px`);
-
     const samplePage = await pdf.getPage(samplePageNumber);
     if (token !== renderToken) return;
 
     const base = samplePage.getViewport({ scale: 1 });
-    const maxWidth = (spreadEl.clientWidth - leftEdge - rightEdge) / 2;
-    const maxHeight = spreadEl.clientHeight;
+    const stageStyle = getComputedStyle(mustQuery(root, "#spread-stage"));
+    const padX =
+      Number.parseFloat(stageStyle.paddingLeft) +
+      Number.parseFloat(stageStyle.paddingRight);
+    const padY =
+      Number.parseFloat(stageStyle.paddingTop) +
+      Number.parseFloat(stageStyle.paddingBottom);
+    const maxWidth = (spreadEl.clientWidth - padX - leftEdge - rightEdge) / 2;
+    const maxHeight = spreadEl.clientHeight - padY;
     if (maxWidth < 1 || maxHeight < 1) return;
 
     const fit = Math.min(maxWidth / base.width, maxHeight / base.height);
-    const cssWidth = Math.floor(base.width * fit);
-    const cssHeight = Math.floor(base.height * fit);
+    const cssWidth = Math.floor(base.width * fit * zoom);
+    const cssHeight = Math.floor(base.height * fit * zoom);
 
-    sizeFace(leftFace, left === null ? cssWidth : null, cssHeight);
-    sizeFace(rightFace, right === null ? cssWidth : null, cssHeight);
+    leftBtn.style.setProperty("--edge-width", `${leftEdge * zoom}px`);
+    rightBtn.style.setProperty("--edge-width", `${rightEdge * zoom}px`);
+
+    // Drop CSS preview before swapping in the new raster size so we don't
+    // compound transform scale with the larger layout box.
+    bookEl.style.transform = "";
+    bookEl.classList.remove("is-preview-zoom");
+    zoomShell.style.width = "";
+    zoomShell.style.height = "";
+
+    // Always pin face size so zoomed pages can't flex-shrink and overlap.
+    sizeFace(leftFace, cssWidth, cssHeight);
+    sizeFace(rightFace, cssWidth, cssHeight);
 
     await Promise.all([
       left !== null
@@ -289,6 +388,15 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
           )
         : clearPage(rightCanvas, rightText),
     ]);
+
+    if (token !== renderToken) return;
+
+    renderedZoom = zoom;
+    renderedLayout = {
+      w: bookEl.offsetWidth,
+      h: bookEl.offsetHeight,
+    };
+    applyZoomPreview();
   }
 
   async function renderPage(
@@ -403,9 +511,9 @@ function bindPageTurn(pageEl: HTMLElement, turn: () => void) {
   });
 }
 
-function sizeFace(face: HTMLElement, width: number | null, height: number) {
-  face.style.width = width === null ? "" : `${width}px`;
-  face.style.height = width === null ? "" : `${height}px`;
+function sizeFace(face: HTMLElement, width: number, height: number) {
+  face.style.width = `${width}px`;
+  face.style.height = `${height}px`;
 }
 
 function mustQuery(root: ParentNode, selector: string): HTMLElement {

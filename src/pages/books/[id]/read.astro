@@ -51,6 +51,13 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
           />
           <span data-page-count></span>
         </label>
+        <div id="zoom-controls">
+          <button type="button" data-zoom-out aria-label="Zoom out">−</button>
+          <button type="button" data-zoom-reset>
+            <span data-zoom-label>100%</span>
+          </button>
+          <button type="button" data-zoom-in aria-label="Zoom in">+</button>
+        </div>
         <Button
           href={pdfUrl}
           download={`${book.id}.pdf`}
@@ -65,7 +72,14 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
       <input type="range" data-page-slider min="1" value="1" step="1" />
     </label>
     <div id="spread">
-      <div id="book" data-closed="true" data-cover="front">
+      <div id="spread-stage">
+        <div id="book-zoom-shell">
+          <div
+            id="book"
+            data-closed="true"
+            data-cover="front"
+            data-zoomed="false"
+          >
         <div
           class="page"
           data-page="left"
@@ -100,6 +114,8 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
             <span class="page-edge" aria-hidden="true"></span>
           </span>
         </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -132,7 +148,6 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     display: grid;
     grid-template-rows: auto auto 1fr;
     gap: 0.75rem;
-    padding: clamp(12px, 2vw, 28px);
   }
 
   #toolbar {
@@ -141,6 +156,8 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     align-items: center;
     gap: 0.75rem 1.25rem;
     min-width: 0;
+    padding: clamp(12px, 2vw, 28px);
+    padding-bottom: 0;
   }
 
   #titles {
@@ -152,7 +169,7 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.75rem 1rem;
+    gap: 0.75rem 2rem;
     margin-left: auto;
   }
 
@@ -162,9 +179,11 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     gap: 0.4rem;
     color: var(--dark-color);
     font-weight: 600;
+    font-size: 1.3rem;
   }
 
   #page-jump input {
+    max-width: 6ch;
     box-sizing: content-box;
     margin: 0;
     padding: 0.35em 0.45em;
@@ -176,9 +195,54 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     text-align: center;
   }
 
+  #zoom-controls {
+    display: flex;
+    align-items: stretch;
+    border: 3px solid var(--dark-color);
+    background: white;
+    color: var(--dark-color);
+    font-size: 26px;
+  }
+
+  #zoom-controls > button {
+    margin: 0;
+    padding: 0.35em 0.65em;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  #zoom-controls > button:hover,
+  #zoom-controls > button:focus-visible {
+    background: var(--dark-color);
+    color: white;
+  }
+
+  #zoom-controls > [data-zoom-reset] {
+    min-width: 4.5em;
+    border-inline: 3px solid var(--dark-color);
+    font-weight: 600;
+    font-size: 1.2rem;
+  }
+
+  #zoom-controls > button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  #zoom-controls > button:disabled:hover {
+    background: transparent;
+    color: inherit;
+  }
+
   #page-scrubber {
     display: block;
     min-width: 0;
+    padding-inline: clamp(12px, 2vw, 28px);
   }
 
   #page-scrubber input {
@@ -223,17 +287,38 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
 
   #spread {
     min-height: 0;
+    overflow: auto;
+  }
+
+  #spread-stage {
+    box-sizing: border-box;
     display: grid;
     place-items: center;
-    margin-block: clamp(12px, 2vw, 28px);
+    min-width: 100%;
+    min-height: 100%;
+    width: max-content;
+    height: max-content;
+    /* Room for the book shadow inside the scrollport (incl. soft ambient). */
+    padding: 5em;
+  }
+
+  #book-zoom-shell {
+    width: max-content;
+    height: max-content;
+    line-height: 0;
   }
 
   #book {
     display: flex;
     flex-direction: row;
     align-items: stretch;
-    max-width: 100%;
-    max-height: 100%;
+    width: max-content;
+    max-width: none;
+    transform-origin: 0 0;
+  }
+
+  #book.is-preview-zoom {
+    will-change: transform;
   }
 
   #book:not([data-closed="true"]),
@@ -247,6 +332,7 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
 
   .page {
     box-sizing: border-box;
+    flex: 0 0 auto;
     margin: 0;
     padding: 0;
     border: 0;
@@ -265,6 +351,7 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
     display: flex;
     flex-direction: row;
     align-items: stretch;
+    flex: 0 0 auto;
     line-height: 0;
   }
 
@@ -291,8 +378,6 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
 
   .page-face > canvas {
     display: block;
-    max-width: 100%;
-    max-height: 100%;
     position: relative;
     z-index: 0;
   }
