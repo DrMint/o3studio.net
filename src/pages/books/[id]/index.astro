@@ -58,22 +58,37 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
             </Button>
           ) : (
             <>
-              <Button
-                href={`/books/${book.id}/read`}
-                color={book.data.darkColor}
-                primary
-              >
-                <Icon name="menu_book" />
-                Read online
-              </Button>
-              <Button
-                href={pdfUrl}
-                download={`${book.id}.pdf`}
-                color={book.data.darkColor}
-              >
-                <Icon name="download" />
-                Download
-              </Button>
+              <span id="read-online">
+                <Button
+                  href={`/books/${book.id}/read`}
+                  color={book.data.darkColor}
+                  primary
+                >
+                  <Icon name="menu_book" />
+                  Read online
+                </Button>
+              </span>
+              <span id="download-secondary">
+                <Button
+                  href={pdfUrl}
+                  download={`${book.id}.pdf`}
+                  color={book.data.darkColor}
+                >
+                  <Icon name="download" />
+                  Download
+                </Button>
+              </span>
+              <span id="download-primary">
+                <Button
+                  href={pdfUrl}
+                  download={`${book.id}.pdf`}
+                  color={book.data.darkColor}
+                  primary
+                >
+                  <Icon name="download" />
+                  Download
+                </Button>
+              </span>
             </>
           )
         }
@@ -84,6 +99,26 @@ const pdfUrl = `/pdf/${book.id}.pdf`;
 </Html>
 
 <style>
+  #read-online,
+  #download-secondary {
+    display: contents;
+  }
+
+  #download-primary {
+    display: none;
+  }
+
+  @media (max-width: 480px), (max-height: 760px) {
+    #read-online,
+    #download-secondary {
+      display: none;
+    }
+
+    #download-primary {
+      display: contents;
+    }
+  }
+
   #layout {
     display: grid;
     grid-template-columns: calc(70vh * 21 / 29.7) 1fr;
