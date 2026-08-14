@@ -3,13 +3,17 @@ interface Props {
   href: string;
   color: string;
   disabled: boolean;
+  download?: string | boolean;
 }
 
-const { color, href, disabled } = Astro.props;
+const { color, href, disabled, download } = Astro.props;
+const downloadAttr =
+  download === true ? "" : typeof download === "string" ? download : undefined;
 ---
 
 <a
   href={disabled ? undefined : href}
+  download={downloadAttr}
   style={`--color: ${color}`}
   aria-disabled={disabled}><slot /></a
 >

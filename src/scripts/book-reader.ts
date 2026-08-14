@@ -22,6 +22,14 @@ function maxSpread(pageCount: number): number {
   return Math.floor(pageCount / 2);
 }
 
+function spreadForPage(page: number): number {
+  return Math.floor(page / 2);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
 export async function initBookReader(root: HTMLElement): Promise<void> {
   const pdfUrl = root.dataset.pdfUrl;
   if (!pdfUrl) throw new Error("Missing data-pdf-url");
@@ -34,11 +42,18 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   const rightFace = mustQuery(rightBtn, ".page-face");
   const leftCanvas = mustQuery(leftBtn, "canvas") as HTMLCanvasElement;
   const rightCanvas = mustQuery(rightBtn, "canvas") as HTMLCanvasElement;
+  const pageInput = mustQuery(root, "[data-page-input]") as HTMLInputElement;
+  const pageSlider = mustQuery(root, "[data-page-slider]") as HTMLInputElement;
+  const pageCountLabel = mustQuery(root, "[data-page-count]");
 
   const pdf = await getDocument({ url: pdfUrl }).promise;
   const pageCount = pdf.numPages;
   let spread = 0;
   let renderToken = 0;
+
+  pageInput.max = String(pageCount);
+  pageSlider.max = String(pageCount);
+  pageCountLabel.textContent = `/ ${pageCount}`;
 
   leftBtn.addEventListener("click", () => {
     if (spread <= 0) return;
@@ -52,9 +67,103 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     void showSpread();
   });
 
+  pageSlider.addEventListener("input", () => {
+    goToPage(Number(pageSlider.value));
+  });
+
+  let editingPageInput = false;
+
+  pageInput.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      editingPageInput = false;
+      goSpread(1);
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      editingPageInput = false;
+      goSpread(-1);
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      editingPageInput = false;
+      goToPage(Number(pageInput.value));
+      pageInput.blur();
+      return;
+    }
+    if (
+      event.key.length === 1 ||
+      event.key === "Backspace" ||
+      event.key === "Delete"
+    ) {
+      editingPageInput = true;
+    }
+  });
+
+  pageInput.addEventListener("input", () => {
+    // Spinner clicks (and similar nudges) fire input without typing keydowns.
+    if (editingPageInput) return;
+    const requested = Number(pageInput.value);
+    const current = displayedPage();
+    if (!Number.isFinite(requested)) {
+      syncPager();
+      return;
+    }
+    if (requested > current) goSpread(1);
+    else if (requested < current) goSpread(-1);
+    else syncPager();
+  });
+
+  pageInput.addEventListener("change", () => {
+    editingPageInput = false;
+    goToPage(Number(pageInput.value));
+  });
+
+  pageInput.addEventListener("blur", () => {
+    editingPageInput = false;
+  });
+
   window.addEventListener("resize", () => void showSpread());
 
   await showSpread();
+
+  function displayedPage(): number {
+    const { left, right } = pagesForSpread(spread, pageCount);
+    return left ?? right ?? 1;
+  }
+
+  function goSpread(delta: number) {
+    const next = clamp(spread + delta, 0, maxSpread(pageCount));
+    if (next === spread) {
+      syncPager();
+      return;
+    }
+    spread = next;
+    void showSpread();
+  }
+
+  function goToPage(page: number) {
+    if (!Number.isFinite(page)) {
+      syncPager();
+      return;
+    }
+    const next = clamp(Math.round(page), 1, pageCount);
+    const nextSpread = spreadForPage(next);
+    if (nextSpread === spread) {
+      syncPager();
+      return;
+    }
+    spread = nextSpread;
+    void showSpread();
+  }
+
+  function syncPager() {
+    const currentPage = displayedPage();
+    pageInput.value = String(currentPage);
+    pageSlider.value = String(currentPage);
+  }
 
   async function showSpread() {
     const token = ++renderToken;
@@ -68,6 +177,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     rightBtn.dataset.empty = String(right === null);
     leftBtn.dataset.active = String(left !== null && canPrev);
     rightBtn.dataset.active = String(right !== null && canNext);
+    syncPager();
 
     const closed = left === null || right === null;
     bookEl.dataset.closed = String(closed);
