@@ -633,7 +633,12 @@ const innerCover = await getImage({
     will-change: transform;
   }
 
-  #book[data-closed="true"] .page:not([data-empty="true"]) .page-shell {
+  #book[data-closed="true"] {
+    border-top-left-radius: 2% 1%;
+    border-bottom-left-radius: 2% 1%;
+    border-top-right-radius: 1% 0.5%;
+    border-bottom-right-radius: 1% 0.5%;
+    overflow: hidden;
     box-shadow:
       0 0.2em 0.3em rgb(0 0 0 / 70%),
       0 1em 1em rgb(0 0 0 / 30%),
@@ -641,11 +646,20 @@ const innerCover = await getImage({
       0 12em 12em rgb(0 0 0 / 50%);
   }
 
-  #book:not([data-closed="true"]) {
+  #book-hardcover {
     box-shadow:
       0 0.2em 0.3em rgb(0 0 0 / 70%),
       0 1em 1em rgb(0 0 0 / 30%),
       0 2em 2em rgb(0 0 0 / 27%);
+  }
+
+  #book-hardcover,
+  #book-lighting {
+    border-top-left-radius: 0.5% 0.8%;
+    border-bottom-left-radius: 0.5% 0.8%;
+    border-top-right-radius: 0.5% 0.8%;
+    border-bottom-right-radius: 0.5% 0.8%;
+    overflow: hidden;
   }
 
   .page {
@@ -682,11 +696,29 @@ const innerCover = await getImage({
   #book:not([data-closed="true"]) .page[data-page="left"] .page-stack {
     margin: var(--cover-overhang-top, 0px) 0 var(--cover-overhang-bottom, 0px)
       var(--cover-overhang-x, 0px);
+    overflow: hidden;
+    /* Spine-side curve */
+    border-top-right-radius: 30% 2%;
+    border-bottom-right-radius: 30% 2%;
+    /* Outer side: round with the edge stack (trapezoid-ish) */
+    border-top-left-radius: calc(0.5% + var(--edge-ratio, 0) * 100%)
+      calc(0.5% + var(--edge-ratio, 0) * 15%);
+    border-bottom-left-radius: calc(0.5% + var(--edge-ratio, 0) * 100%)
+      calc(0.5% + var(--edge-ratio, 0) * 15%);
   }
 
   #book:not([data-closed="true"]) .page[data-page="right"] .page-stack {
     margin: var(--cover-overhang-top, 0px) var(--cover-overhang-x, 0px)
       var(--cover-overhang-bottom, 0px) 0;
+    overflow: hidden;
+    /* Spine-side curve */
+    border-top-left-radius: 30% 2%;
+    border-bottom-left-radius: 30% 2%;
+    /* Outer side: round with the edge stack (trapezoid-ish) */
+    border-top-right-radius: calc(0.5% + var(--edge-ratio, 0) * 100%)
+      calc(0.5% + var(--edge-ratio, 0) * 15%);
+    border-bottom-right-radius: calc(0.5% + var(--edge-ratio, 0) * 100%)
+      calc(0.5% + var(--edge-ratio, 0) * 15%);
   }
 
   .page-shell {
