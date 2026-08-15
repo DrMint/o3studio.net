@@ -204,6 +204,14 @@ const innerCover = await getImage({
 </script>
 
 <style is:global>
+  html:has(#reader) {
+    background-image:
+      url("/paper2.webp"), radial-gradient(circle at top, white, rgb(0 0 0 / 0.2));
+    background-blend-mode: multiply;
+    background-size: 25cm, 100% 100%;
+    background-repeat: round, no-repeat;
+  }
+
   html:has(#reader),
   body:has(#reader) {
     margin: 0;
