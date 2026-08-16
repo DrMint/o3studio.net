@@ -803,6 +803,8 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     // Always pin face size so zoomed pages can't flex-shrink and overlap.
     sizeFace(leftFace, cssWidth, cssHeight);
     sizeFace(rightFace, cssWidth, cssHeight);
+    randomizePaperPosition(leftFace, left);
+    randomizePaperPosition(rightFace, right);
 
     await Promise.all([
       left !== null
@@ -917,6 +919,20 @@ function isEditableTarget(target: EventTarget | null): boolean {
 function sizeFace(face: HTMLElement, width: number, height: number) {
   face.style.width = `${width}px`;
   face.style.height = `${height}px`;
+}
+
+/** New paper-texture offset whenever the face shows a different page. */
+function randomizePaperPosition(face: HTMLElement, page: number | null) {
+  const key = page === null ? "" : String(page);
+  if (face.dataset.paperPage === key) return;
+  face.dataset.paperPage = key;
+  if (page === null) {
+    face.style.removeProperty("--paper-position");
+    return;
+  }
+  const x = Math.floor(Math.random() * 100);
+  const y = Math.floor(Math.random() * 100);
+  face.style.setProperty("--paper-position", `${x}% ${y}%`);
 }
 
 function mustQuery(root: ParentNode, selector: string): HTMLElement {
