@@ -48,7 +48,7 @@ const COVER_OVERHANG_RATIO_X = 0.025;
 const COVER_OVERHANG_RATIO_TOP = 0.02;
 /** Bottom hardcover peek beyond the page stack, as a fraction of page-face width. */
 const COVER_OVERHANG_RATIO_BOTTOM = 0.02;
-const ZOOM_MIN = 0.56;
+const ZOOM_MIN = 0.68;
 const ZOOM_MAX = 3.83;
 const ZOOM_STEP = 0.25;
 /** Wait for zoom gestures to settle before asking pdf.js to re-rasterize. */
@@ -223,7 +223,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     }
 
     // At fit zoom there's nothing to pan — use the wheel to turn pages.
-    if (zoom <= ZOOM_MIN + 0.001) {
+    if (zoom <= 1.001) {
       event.preventDefault();
       if (wheelFlipLocked) return;
       const delta =
