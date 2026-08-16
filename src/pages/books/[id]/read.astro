@@ -576,10 +576,18 @@ const innerCover = await getImage({
     transform-origin: 0 0;
   }
 
-  /* Single double-page inner cover behind both pages. */
+  /* Single double-page inner cover behind both pages.
+     Sized to the unscaled face + overhang so thick stacks can protrude. */
   #book-hardcover {
     position: absolute;
-    inset: 0;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: calc(
+      var(--page-face-height, 0px) + var(--cover-overhang-top, 0px) +
+        var(--cover-overhang-bottom, 0px)
+    );
+    transform: translateY(-50%);
     background-color: var(--dark-color);
     background-image: var(--cover-image);
     background-size: 100% 100%;
@@ -680,7 +688,6 @@ const innerCover = await getImage({
     display: block;
     line-height: 0;
 
-    --stack-origin-shift: 0%;
     /* Full stack-scale at start/end; 1 at mid-book (progress 0.5). */
     --scale-x: calc(
       1 + (var(--stack-scale, 1) - 1) * abs(2 * var(--book-progress, 0) - 1)
@@ -693,12 +700,15 @@ const innerCover = await getImage({
       0 12em 12em rgb(0 0 0 / calc(50% * var(--stack-shade)));
   }
 
+  #book:not([data-closed="true"]) {
+    align-items: center;
+  }
+
   #book:not([data-closed="true"]) .page[data-page="left"] .page-stack {
-    margin: var(--cover-overhang-top, 0px) 0 var(--cover-overhang-bottom, 0px)
-      var(--cover-overhang-x, 0px);
+    /* Outer edge fixed; X growth overlaps toward the spine (negative end margin). */
+    margin: var(--stack-margin-top, 0px) var(--stack-margin-end, 0px)
+      var(--stack-margin-bottom, 0px) var(--stack-margin-start, 0px);
     overflow: hidden;
-    transform: scaleY(var(--stack-scale, 1)) scaleX(var(--scale-x));
-    transform-origin: calc(var(--stack-origin-shift)) center;
     /* Spine-side curve */
     border-top-right-radius: 50% calc(50% * (var(--stack-scale, 1) - 1));
     border-bottom-right-radius: 50% calc(50% * (var(--stack-scale, 1) - 1));
@@ -710,11 +720,9 @@ const innerCover = await getImage({
   }
 
   #book:not([data-closed="true"]) .page[data-page="right"] .page-stack {
-    margin: var(--cover-overhang-top, 0px) var(--cover-overhang-x, 0px)
-      var(--cover-overhang-bottom, 0px) 0;
+    margin: var(--stack-margin-top, 0px) var(--stack-margin-start, 0px)
+      var(--stack-margin-bottom, 0px) var(--stack-margin-end, 0px);
     overflow: hidden;
-    transform-origin: calc(100% - var(--stack-origin-shift)) center;
-    transform: scaleY(var(--stack-scale, 1)) scaleX(var(--scale-x));
     /* Spine-side curve */
     border-top-left-radius: 50% calc(50% * (var(--stack-scale, 1) - 1));
     border-bottom-left-radius: 50% calc(50% * (var(--stack-scale, 1) - 1));
@@ -774,6 +782,8 @@ const innerCover = await getImage({
     flex: 0 0 auto;
     display: block;
     overflow: hidden;
+    /* Visible initially or while canvas catches up after a size change. */
+    background-color: #fff;
   }
 
   .page-face > canvas {

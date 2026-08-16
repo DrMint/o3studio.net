@@ -704,15 +704,26 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     const lastPage = right ?? left!;
     const pagesRead = firstPage - 1;
     const pagesRemaining = pageCount - lastPage;
-    bookEl.style.setProperty(
-      "--book-progress",
-      String(pageCount > 0 ? pagesRead / pageCount : 0),
-    );
+    const bookProgress = pageCount > 0 ? pagesRead / pageCount : 0;
+    bookEl.style.setProperty("--book-progress", String(bookProgress));
     const leftRatio = closed ? 0 : pagesRead * EDGE_WIDTH_PER_PAGE;
     const rightRatio = closed ? 0 : pagesRemaining * EDGE_WIDTH_PER_PAGE;
     const overhangX = closed ? 0 : COVER_OVERHANG_RATIO_X;
     const overhangTop = closed ? 0 : COVER_OVERHANG_RATIO_TOP;
     const overhangBottom = closed ? 0 : COVER_OVERHANG_RATIO_BOTTOM;
+    const leftStackScale = closed
+      ? 1
+      : 1 + pagesRead * STACK_SCALE_PER_PAGE;
+    const rightStackScale = closed
+      ? 1
+      : 1 + pagesRemaining * STACK_SCALE_PER_PAGE;
+    // Mid-book: scaleX → 1 so stacks don't overlap when z-index flips.
+    const progressBend = Math.abs(2 * bookProgress - 1);
+    const leftScaleX = 1 + (leftStackScale - 1) * progressBend;
+    const rightScaleX = 1 + (rightStackScale - 1) * progressBend;
+    // Fit against the book's thickest possible stack so base page size
+    // stays constant across progress (avoids mid-book "growth").
+    const peakStackScale = 1 + pageCount * STACK_SCALE_PER_PAGE;
 
     const samplePage = await pdf.getPage(samplePageNumber);
     if (token !== renderToken) return;
@@ -731,11 +742,13 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     if (availW < 1 || availH < 1) return;
 
     // Faces + side edges + outer hardcover overhang share the space.
+    // X stack growth uses negative spine margins, so it doesn't need extra width.
     const pageSlots = closed ? 1 : 2;
     const widthFromViewport =
       availW / (pageSlots + leftRatio + rightRatio + pageSlots * overhangX);
+    const heightScale = closed ? 1 : peakStackScale;
     const heightFromViewport =
-      availH / (aspect + overhangTop + overhangBottom);
+      availH / (aspect * heightScale + overhangTop + overhangBottom);
     const cssWidth = Math.floor(
       Math.min(widthFromViewport, heightFromViewport) * zoom,
     );
@@ -743,9 +756,17 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     if (cssWidth < 1 || cssHeight < 1) return;
     const epoch = syncRasterLayout(cssWidth, cssHeight);
 
+    const leftFaceW = Math.max(1, Math.floor(cssWidth * leftScaleX));
+    const leftFaceH = Math.max(1, Math.floor(cssHeight * leftStackScale));
+    const rightFaceW = Math.max(1, Math.floor(cssWidth * rightScaleX));
+    const rightFaceH = Math.max(1, Math.floor(cssHeight * rightStackScale));
+
     const overhangXPx = `${cssWidth * overhangX}px`;
     const overhangTopPx = `${cssWidth * overhangTop}px`;
     const overhangBottomPx = `${cssWidth * overhangBottom}px`;
+    // Extra width beyond the base face+edge footprint; pulled back on the spine side.
+    const leftOverlapX = `${cssWidth * (leftScaleX - 1) * (1 + leftRatio)}px`;
+    const rightOverlapX = `${cssWidth * (rightScaleX - 1) * (1 + rightRatio)}px`;
 
     // Ratio only depends on reading position; face width updates on resize/zoom
     // and CSS keeps edge/cover thickness proportional.
@@ -761,18 +782,22 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
       "--stack-shade",
       String(Math.min(1, rightRatio / stackShadeFull)),
     );
-    leftStack.style.setProperty(
-      "--stack-scale",
-      String(closed ? 1 : 1 + pagesRead * STACK_SCALE_PER_PAGE),
-    );
-    rightStack.style.setProperty(
-      "--stack-scale",
-      String(closed ? 1 : 1 + pagesRemaining * STACK_SCALE_PER_PAGE),
-    );
+    leftStack.style.setProperty("--stack-scale", String(leftStackScale));
+    rightStack.style.setProperty("--stack-scale", String(rightStackScale));
+    leftStack.style.setProperty("--scale-x", String(leftScaleX));
+    rightStack.style.setProperty("--scale-x", String(rightScaleX));
     // Thicker side paints above the other where scaled stacks overlap.
     if (closed) {
       leftBtn.style.zIndex = "";
       rightBtn.style.zIndex = "";
+      leftStack.style.removeProperty("--stack-margin-top");
+      leftStack.style.removeProperty("--stack-margin-bottom");
+      leftStack.style.removeProperty("--stack-margin-start");
+      leftStack.style.removeProperty("--stack-margin-end");
+      rightStack.style.removeProperty("--stack-margin-top");
+      rightStack.style.removeProperty("--stack-margin-bottom");
+      rightStack.style.removeProperty("--stack-margin-start");
+      rightStack.style.removeProperty("--stack-margin-end");
     } else if (pagesRead > pagesRemaining) {
       leftBtn.style.zIndex = "2";
       rightBtn.style.zIndex = "1";
@@ -783,15 +808,22 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
       leftBtn.style.zIndex = "";
       rightBtn.style.zIndex = "";
     }
-    leftBtn.style.setProperty("--cover-overhang-x", overhangXPx);
-    leftBtn.style.setProperty("--cover-overhang-top", overhangTopPx);
-    leftBtn.style.setProperty("--cover-overhang-bottom", overhangBottomPx);
-    rightBtn.style.setProperty("--cover-overhang-x", overhangXPx);
-    rightBtn.style.setProperty("--cover-overhang-top", overhangTopPx);
-    rightBtn.style.setProperty("--cover-overhang-bottom", overhangBottomPx);
-    leftBtn.style.setProperty("--page-face-width", `${cssWidth}px`);
-    rightBtn.style.setProperty("--page-face-width", `${cssWidth}px`);
+    if (!closed) {
+      leftStack.style.setProperty("--stack-margin-top", overhangTopPx);
+      leftStack.style.setProperty("--stack-margin-bottom", overhangBottomPx);
+      leftStack.style.setProperty("--stack-margin-start", overhangXPx);
+      leftStack.style.setProperty("--stack-margin-end", `-${leftOverlapX}`);
+      rightStack.style.setProperty("--stack-margin-top", overhangTopPx);
+      rightStack.style.setProperty("--stack-margin-bottom", overhangBottomPx);
+      rightStack.style.setProperty("--stack-margin-start", overhangXPx);
+      rightStack.style.setProperty("--stack-margin-end", `-${rightOverlapX}`);
+    }
+    leftBtn.style.setProperty("--page-face-width", `${leftFaceW}px`);
+    rightBtn.style.setProperty("--page-face-width", `${rightFaceW}px`);
     bookEl.style.setProperty("--page-face-width", `${cssWidth}px`);
+    bookEl.style.setProperty("--page-face-height", `${cssHeight}px`);
+    bookEl.style.setProperty("--cover-overhang-top", overhangTopPx);
+    bookEl.style.setProperty("--cover-overhang-bottom", overhangBottomPx);
 
     // Drop CSS preview before swapping in the new raster size so we don't
     // compound transform scale with the larger layout box.
@@ -801,14 +833,14 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     zoomShell.style.height = "";
 
     // Always pin face size so zoomed pages can't flex-shrink and overlap.
-    sizeFace(leftFace, cssWidth, cssHeight);
-    sizeFace(rightFace, cssWidth, cssHeight);
+    sizeFace(leftFace, leftFaceW, leftFaceH);
+    sizeFace(rightFace, rightFaceW, rightFaceH);
     randomizePaperPosition(leftFace, left);
     randomizePaperPosition(rightFace, right);
 
     await Promise.all([
       left !== null
-        ? renderPage(pdf, left, leftCanvas, leftText, cssWidth, cssHeight, token)
+        ? renderPage(pdf, left, leftCanvas, leftText, leftFaceW, leftFaceH, token)
         : clearPage(leftCanvas, leftText),
       right !== null
         ? renderPage(
@@ -816,8 +848,8 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
             right,
             rightCanvas,
             rightText,
-            cssWidth,
-            cssHeight,
+            rightFaceW,
+            rightFaceH,
             token,
           )
         : clearPage(rightCanvas, rightText),
