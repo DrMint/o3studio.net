@@ -151,7 +151,6 @@ const innerCover = await getImage({
                   <span class="page-specular" aria-hidden="true"></span>
                 </span>
               </div>
-              <span id="book-lighting" aria-hidden="true"></span>
             </div>
           </div>
         </div>
@@ -206,9 +205,12 @@ const innerCover = await getImage({
 <style is:global>
   html:has(#reader) {
     background-image:
-      url("/paper2.webp"), radial-gradient(circle at top, white, rgb(0 0 0 / 0.2));
+      url("/paper2.webp"),
+      radial-gradient(circle at top, white, rgb(0 0 0 / 0.2));
     background-blend-mode: multiply;
-    background-size: 25cm, 100% 100%;
+    background-size:
+      25cm,
+      100% 100%;
     background-repeat: round, no-repeat;
   }
 
@@ -607,10 +609,10 @@ const innerCover = await getImage({
       to left,
       rgba(0, 0, 0, 0.5) 0%,
       transparent 0.5%,
-      transparent calc(50% - var(--spine-width) / 2 - 1%),
+      transparent calc(50% - var(--spine-width) / 2 - 0.5%),
       rgba(0, 0, 0, 0.5) calc(50% - var(--spine-width) / 2),
       rgba(0, 0, 0, 0.5) calc(50% + var(--spine-width) / 2),
-      transparent calc(50% + var(--spine-width) / 2 + 1%),
+      transparent calc(50% + var(--spine-width) / 2 + 0.5%),
       transparent 99.5%,
       rgba(0, 0, 0, 0.5) 100%
     );
@@ -618,23 +620,6 @@ const innerCover = await getImage({
 
   #book[data-closed="true"] #book-hardcover {
     display: none;
-  }
-
-  /* One lighting pass over the whole book (pages + hardcover). */
-  #book-lighting {
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    pointer-events: none;
-    background-image: url("/lightingDoublePage.webp");
-    background-repeat: no-repeat;
-    background-size: 100% 100%;
-    mix-blend-mode: multiply;
-    opacity: 0.3;
-  }
-
-  #book[data-closed="true"] #book-lighting {
-    background-image: url("/lightingSinglePage.webp");
   }
 
   #book.is-preview-zoom {
@@ -661,8 +646,7 @@ const innerCover = await getImage({
       0 2em 2em rgb(0 0 0 / 27%);
   }
 
-  #book-hardcover,
-  #book-lighting {
+  #book-hardcover {
     border-top-left-radius: 0.5% 0.8%;
     border-bottom-left-radius: 0.5% 0.8%;
     border-top-right-radius: 0.5% 0.8%;
@@ -694,6 +678,12 @@ const innerCover = await getImage({
     display: block;
     line-height: 0;
 
+    --stack-origin-shift: 0%;
+    /* Full stack-scale at start/end; 1 at mid-book (progress 0.5). */
+    --scale-x: calc(
+      1 + (var(--stack-scale, 1) - 1) * abs(2 * var(--book-progress, 0) - 1)
+    );
+
     box-shadow:
       0 0.2em 0.3em rgb(0 0 0 / calc(40% * var(--stack-shade))),
       0 1em 1em rgb(0 0 0 / calc(20% * var(--stack-shade))),
@@ -705,28 +695,32 @@ const innerCover = await getImage({
     margin: var(--cover-overhang-top, 0px) 0 var(--cover-overhang-bottom, 0px)
       var(--cover-overhang-x, 0px);
     overflow: hidden;
+    transform: scaleY(var(--stack-scale, 1)) scaleX(var(--scale-x));
+    transform-origin: calc(var(--stack-origin-shift)) center;
     /* Spine-side curve */
-    border-top-right-radius: 30% 2%;
-    border-bottom-right-radius: 30% 2%;
+    border-top-right-radius: 50% calc(50% * (var(--stack-scale, 1) - 1));
+    border-bottom-right-radius: 50% calc(50% * (var(--stack-scale, 1) - 1));
     /* Outer side: round with the edge stack (trapezoid-ish) */
     border-top-left-radius: calc(0.5% + var(--edge-ratio, 0) * 100%)
-      calc(0.5% + var(--edge-ratio, 0) * 15%);
+      calc(0.5% + var(--edge-ratio, 0) * 30% * var(--stack-scale, 1));
     border-bottom-left-radius: calc(0.5% + var(--edge-ratio, 0) * 100%)
-      calc(0.5% + var(--edge-ratio, 0) * 15%);
+      calc(0.5% + var(--edge-ratio, 0) * 30% * var(--stack-scale, 1));
   }
 
   #book:not([data-closed="true"]) .page[data-page="right"] .page-stack {
     margin: var(--cover-overhang-top, 0px) var(--cover-overhang-x, 0px)
       var(--cover-overhang-bottom, 0px) 0;
     overflow: hidden;
+    transform-origin: calc(100% - var(--stack-origin-shift)) center;
+    transform: scaleY(var(--stack-scale, 1)) scaleX(var(--scale-x));
     /* Spine-side curve */
-    border-top-left-radius: 30% 2%;
-    border-bottom-left-radius: 30% 2%;
+    border-top-left-radius: 50% calc(50% * (var(--stack-scale, 1) - 1));
+    border-bottom-left-radius: 50% calc(50% * (var(--stack-scale, 1) - 1));
     /* Outer side: round with the edge stack (trapezoid-ish) */
     border-top-right-radius: calc(0.5% + var(--edge-ratio, 0) * 100%)
-      calc(0.5% + var(--edge-ratio, 0) * 15%);
+      calc(0.5% + var(--edge-ratio, 0) * 30% * var(--stack-scale, 1));
     border-bottom-right-radius: calc(0.5% + var(--edge-ratio, 0) * 100%)
-      calc(0.5% + var(--edge-ratio, 0) * 15%);
+      calc(0.5% + var(--edge-ratio, 0) * 30% * var(--stack-scale, 1));
   }
 
   .page-shell {
@@ -790,7 +784,7 @@ const innerCover = await getImage({
     z-index: 1;
   }
 
-  /* Apply order: paper → tint → fold → specular (lighting is on #book) */
+  /* Apply order: paper → tint → fold → specular */
   .page-face::before {
     content: "";
     position: absolute;

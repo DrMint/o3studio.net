@@ -40,10 +40,12 @@ function clamp(value: number, min: number, max: number): number {
  * e.g. 0.001 → 100 unread pages ≈ 10% of the face width.
  */
 const EDGE_WIDTH_PER_PAGE = 0.0003;
+/** Extra stack scale per page on that side (≈1.06 at 300 pages). */
+const STACK_SCALE_PER_PAGE = 0.05 / 300;
 /** Horizontal hardcover peek beyond the page stack, as a fraction of page-face width. */
-const COVER_OVERHANG_RATIO_X = 0.05;
+const COVER_OVERHANG_RATIO_X = 0.025;
 /** Top hardcover peek beyond the page stack, as a fraction of page-face width. */
-const COVER_OVERHANG_RATIO_TOP = 0.01;
+const COVER_OVERHANG_RATIO_TOP = 0.02;
 /** Bottom hardcover peek beyond the page stack, as a fraction of page-face width. */
 const COVER_OVERHANG_RATIO_BOTTOM = 0.02;
 const ZOOM_MIN = 1;
@@ -143,7 +145,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   pageCountLabel.textContent = `/ ${pageCount}`;
   bookEl.style.setProperty(
     "--spine-thickness",
-    String(pageCount * EDGE_WIDTH_PER_PAGE * 1.8),
+    String(pageCount * EDGE_WIDTH_PER_PAGE * 2),
   );
   syncZoomUi();
 
@@ -688,6 +690,10 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     const lastPage = right ?? left!;
     const pagesRead = firstPage - 1;
     const pagesRemaining = pageCount - lastPage;
+    bookEl.style.setProperty(
+      "--book-progress",
+      String(pageCount > 0 ? pagesRead / pageCount : 0),
+    );
     const leftRatio = closed ? 0 : pagesRead * EDGE_WIDTH_PER_PAGE;
     const rightRatio = closed ? 0 : pagesRemaining * EDGE_WIDTH_PER_PAGE;
     const overhangX = closed ? 0 : COVER_OVERHANG_RATIO_X;
@@ -741,6 +747,28 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
       "--stack-shade",
       String(Math.min(1, rightRatio / stackShadeFull)),
     );
+    leftStack.style.setProperty(
+      "--stack-scale",
+      String(closed ? 1 : 1 + pagesRead * STACK_SCALE_PER_PAGE),
+    );
+    rightStack.style.setProperty(
+      "--stack-scale",
+      String(closed ? 1 : 1 + pagesRemaining * STACK_SCALE_PER_PAGE),
+    );
+    // Thicker side paints above the other where scaled stacks overlap.
+    if (closed) {
+      leftBtn.style.zIndex = "";
+      rightBtn.style.zIndex = "";
+    } else if (pagesRead > pagesRemaining) {
+      leftBtn.style.zIndex = "2";
+      rightBtn.style.zIndex = "1";
+    } else if (pagesRemaining > pagesRead) {
+      leftBtn.style.zIndex = "1";
+      rightBtn.style.zIndex = "2";
+    } else {
+      leftBtn.style.zIndex = "";
+      rightBtn.style.zIndex = "";
+    }
     leftBtn.style.setProperty("--cover-overhang-x", overhangXPx);
     leftBtn.style.setProperty("--cover-overhang-top", overhangTopPx);
     leftBtn.style.setProperty("--cover-overhang-bottom", overhangBottomPx);
