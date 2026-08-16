@@ -716,22 +716,31 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     const pagesRemaining = pageCount - lastPage;
     const bookProgress = pageCount > 0 ? pagesRead / pageCount : 0;
     bookEl.style.setProperty("--book-progress", String(bookProgress));
-    const leftRatio = closed ? 0 : pagesRead * EDGE_WIDTH_PER_PAGE;
-    const rightRatio = closed ? 0 : pagesRemaining * EDGE_WIDTH_PER_PAGE;
+    // Pastedowns (page 2 / pageCount−1) are endpapers, not stack leaves.
+    const leftEdgePages = Math.max(0, pagesRead - 1);
+    const rightEdgePages = Math.max(0, pagesRemaining - 1);
+    const leftRatio = closed ? 0 : leftEdgePages * EDGE_WIDTH_PER_PAGE;
+    const rightRatio = closed ? 0 : rightEdgePages * EDGE_WIDTH_PER_PAGE;
+    // Display overhang only when open; fit always reserves it so closed/open
+    // share the same base face size.
     const overhangX = closed ? 0 : COVER_OVERHANG_RATIO_X;
     const overhangTop = closed ? 0 : COVER_OVERHANG_RATIO_TOP;
     const overhangBottom = closed ? 0 : COVER_OVERHANG_RATIO_BOTTOM;
-    const leftStackScale = closed ? 1 : 1 + pagesRead * STACK_SCALE_PER_PAGE;
+    const leftStackScale = closed
+      ? 1
+      : 1 + leftEdgePages * STACK_SCALE_PER_PAGE;
     const rightStackScale = closed
       ? 1
-      : 1 + pagesRemaining * STACK_SCALE_PER_PAGE;
+      : 1 + rightEdgePages * STACK_SCALE_PER_PAGE;
     // Mid-book: scaleX → 1 so stacks don't overlap when z-index flips.
     const progressBend = Math.abs(2 * bookProgress - 1);
     const leftScaleX = 1 + (leftStackScale - 1) * progressBend;
     const rightScaleX = 1 + (rightStackScale - 1) * progressBend;
     // Fit against the book's thickest possible stack so base page size
     // stays constant across progress (avoids mid-book "growth").
-    const peakStackScale = 1 + pageCount * STACK_SCALE_PER_PAGE;
+    const peakStackPages = Math.max(0, pageCount - 2);
+    const peakStackScale = 1 + peakStackPages * STACK_SCALE_PER_PAGE;
+    const peakEdgeRatio = peakStackPages * EDGE_WIDTH_PER_PAGE;
 
     const samplePage = await pdf.getPage(samplePageNumber);
     if (token !== renderToken) return;
@@ -749,14 +758,15 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     const availH = spreadEl.clientHeight - padY;
     if (availW < 1 || availH < 1) return;
 
-    // Faces + side edges + outer hardcover overhang share the space.
-    // X stack growth uses negative spine margins, so it doesn't need extra width.
-    const pageSlots = closed ? 1 : 2;
+    // Always fit as an open spread (2 faces + peak edge + overhang + peak
+    // stack height) so opening/closing doesn't change the base face size.
     const widthFromViewport =
-      availW / (pageSlots + leftRatio + rightRatio + pageSlots * overhangX);
-    const heightScale = closed ? 1 : peakStackScale;
+      availW / (2 + peakEdgeRatio + 2 * COVER_OVERHANG_RATIO_X);
     const heightFromViewport =
-      availH / (aspect * heightScale + overhangTop + overhangBottom);
+      availH /
+      (aspect * peakStackScale +
+        COVER_OVERHANG_RATIO_TOP +
+        COVER_OVERHANG_RATIO_BOTTOM);
     const cssWidth = Math.floor(
       Math.min(widthFromViewport, heightFromViewport) * zoom
     );
@@ -764,10 +774,30 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     if (cssWidth < 1 || cssHeight < 1) return;
     const epoch = syncRasterLayout(cssWidth, cssHeight);
 
-    const leftFaceW = Math.max(1, Math.floor(cssWidth * leftScaleX));
-    const leftFaceH = Math.max(1, Math.floor(cssHeight * leftStackScale));
-    const rightFaceW = Math.max(1, Math.floor(cssWidth * rightScaleX));
-    const rightFaceH = Math.max(1, Math.floor(cssHeight * rightStackScale));
+    // Closed cover board = open hardcover half (base face + outer overhang).
+    const coverFaceW = Math.max(
+      1,
+      Math.floor(cssWidth * (1 + COVER_OVERHANG_RATIO_X))
+    );
+    const coverFaceH = Math.max(
+      1,
+      Math.floor(
+        cssHeight +
+          cssWidth * (COVER_OVERHANG_RATIO_TOP + COVER_OVERHANG_RATIO_BOTTOM)
+      )
+    );
+    const leftFaceW = closed
+      ? coverFaceW
+      : Math.max(1, Math.floor(cssWidth * leftScaleX));
+    const leftFaceH = closed
+      ? coverFaceH
+      : Math.max(1, Math.floor(cssHeight * leftStackScale));
+    const rightFaceW = closed
+      ? coverFaceW
+      : Math.max(1, Math.floor(cssWidth * rightScaleX));
+    const rightFaceH = closed
+      ? coverFaceH
+      : Math.max(1, Math.floor(cssHeight * rightStackScale));
 
     const overhangXPx = `${cssWidth * overhangX}px`;
     const overhangTopPx = `${cssWidth * overhangTop}px`;
