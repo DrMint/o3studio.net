@@ -574,6 +574,8 @@ const innerCover = await getImage({
     width: max-content;
     max-width: none;
     transform-origin: 0 0;
+    /* 1em ≈ 16px at a ~400px face; tracks zoom via --page-face-width. */
+    --shadow-em: calc(var(--page-face-width, 400px) / 25);
   }
 
   /* Single double-page inner cover behind both pages.
@@ -642,14 +644,16 @@ const innerCover = await getImage({
     border-top-right-radius: 1% 0.5%;
     border-bottom-right-radius: 1% 0.5%;
     overflow: hidden;
+    font-size: var(--shadow-em);
     box-shadow:
       0 0.2em 0.3em rgb(0 0 0 / 70%),
       0 1em 1em rgb(0 0 0 / 30%),
       0 2em 2em rgb(0 0 0 / 27%),
-      0 12em 12em rgb(0 0 0 / 50%);
+      0 6em 6em rgb(0 0 0 / 50%);
   }
 
   #book-hardcover {
+    font-size: var(--shadow-em);
     box-shadow:
       0 0.2em 0.3em rgb(0 0 0 / 70%),
       0 1em 1em rgb(0 0 0 / 30%),
@@ -687,6 +691,8 @@ const innerCover = await getImage({
     z-index: 1;
     display: block;
     line-height: 0;
+    /* Shadow em tracks this stack's face width (and thus zoom). */
+    font-size: calc(var(--page-face-width, 400px) / 25);
 
     /* Full stack-scale at start/end; 1 at mid-book (progress 0.5). */
     --scale-x: calc(
@@ -697,7 +703,7 @@ const innerCover = await getImage({
       0 0.2em 0.3em rgb(0 0 0 / calc(40% * var(--stack-shade))),
       0 1em 1em rgb(0 0 0 / calc(20% * var(--stack-shade))),
       0 2em 2em rgb(0 0 0 / calc(27% * var(--stack-shade))),
-      0 12em 12em rgb(0 0 0 / calc(50% * var(--stack-shade)));
+      0 6em 6em rgb(0 0 0 / calc(50% * var(--stack-shade)));
   }
 
   #book:not([data-closed="true"]) {
@@ -834,7 +840,7 @@ const innerCover = await getImage({
     background-repeat: no-repeat;
     background-size: 100% 100%;
     mix-blend-mode: overlay;
-    opacity: 0.5;
+    opacity: 0.3;
   }
 
   .page[data-pastedown] .page-pastedown {

@@ -48,8 +48,8 @@ const COVER_OVERHANG_RATIO_X = 0.025;
 const COVER_OVERHANG_RATIO_TOP = 0.02;
 /** Bottom hardcover peek beyond the page stack, as a fraction of page-face width. */
 const COVER_OVERHANG_RATIO_BOTTOM = 0.02;
-const ZOOM_MIN = 1;
-const ZOOM_MAX = 4;
+const ZOOM_MIN = 0.56;
+const ZOOM_MAX = 3.83;
 const ZOOM_STEP = 0.25;
 /** Wait for zoom gestures to settle before asking pdf.js to re-rasterize. */
 const ZOOM_SETTLE_MS = 140;
@@ -106,15 +106,21 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   const zoomOutBtn = mustQuery(root, "[data-zoom-out]");
   const zoomResetBtn = mustQuery(root, "[data-zoom-reset]");
   const zoomLabel = mustQuery(root, "[data-zoom-label]");
-  const turnPrevBtn = mustQuery(root, "[data-turn='prev']") as HTMLButtonElement;
-  const turnNextBtn = mustQuery(root, "[data-turn='next']") as HTMLButtonElement;
+  const turnPrevBtn = mustQuery(
+    root,
+    "[data-turn='prev']"
+  ) as HTMLButtonElement;
+  const turnNextBtn = mustQuery(
+    root,
+    "[data-turn='next']"
+  ) as HTMLButtonElement;
   const fullscreenEnterBtn = mustQuery(
     root,
-    "#fullscreen-enter",
+    "#fullscreen-enter"
   ) as HTMLButtonElement;
   const fullscreenExitBtn = mustQuery(
     root,
-    "#fullscreen-exit",
+    "#fullscreen-exit"
   ) as HTMLButtonElement;
   const spreadArea = mustQuery(root, "#spread-area");
 
@@ -145,7 +151,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   pageCountLabel.textContent = `/ ${pageCount}`;
   bookEl.style.setProperty(
     "--spine-thickness",
-    String(pageCount * EDGE_WIDTH_PER_PAGE * 2),
+    String(pageCount * EDGE_WIDTH_PER_PAGE * 2)
   );
   syncZoomUi();
 
@@ -225,7 +231,10 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
           ? event.deltaY
           : event.deltaX;
       if (delta === 0) return;
-      if (Math.sign(delta) !== Math.sign(wheelPageDelta) && wheelPageDelta !== 0) {
+      if (
+        Math.sign(delta) !== Math.sign(wheelPageDelta) &&
+        wheelPageDelta !== 0
+      ) {
         wheelPageDelta = 0;
       }
       wheelPageDelta += delta;
@@ -482,7 +491,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
       zoom = clamp(
         Math.round(next / ZOOM_STEP) * ZOOM_STEP,
         ZOOM_MIN,
-        ZOOM_MAX,
+        ZOOM_MAX
       );
     }
     syncZoomUi();
@@ -519,7 +528,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     pageNumber: number,
     cssWidth: number,
     cssHeight: number,
-    dpr: number,
+    dpr: number
   ): string {
     return `${pageNumber}:${cssWidth}x${cssHeight}@${dpr}`;
   }
@@ -560,7 +569,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     pageNumber: number,
     cssWidth: number,
     cssHeight: number,
-    token?: number,
+    token?: number
   ): Promise<HTMLCanvasElement | null> {
     const dpr = window.devicePixelRatio || 1;
     const key = rasterKey(pageNumber, cssWidth, cssHeight, dpr);
@@ -645,7 +654,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     center: number,
     cssWidth: number,
     cssHeight: number,
-    epoch: number,
+    epoch: number
   ) {
     const pages = pagesAroundSpread(center).filter((pageNumber) => {
       const { left, right } = pagesForSpread(center, pageCount);
@@ -679,7 +688,8 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     const pastedownFor = (page: number | null): "front" | "back" | null => {
       if (page === null) return null;
       if (page === 2) return "front";
-      if (backPastedownPage !== null && page === backPastedownPage) return "back";
+      if (backPastedownPage !== null && page === backPastedownPage)
+        return "back";
       return null;
     };
     const leftPastedown = pastedownFor(left);
@@ -711,9 +721,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     const overhangX = closed ? 0 : COVER_OVERHANG_RATIO_X;
     const overhangTop = closed ? 0 : COVER_OVERHANG_RATIO_TOP;
     const overhangBottom = closed ? 0 : COVER_OVERHANG_RATIO_BOTTOM;
-    const leftStackScale = closed
-      ? 1
-      : 1 + pagesRead * STACK_SCALE_PER_PAGE;
+    const leftStackScale = closed ? 1 : 1 + pagesRead * STACK_SCALE_PER_PAGE;
     const rightStackScale = closed
       ? 1
       : 1 + pagesRemaining * STACK_SCALE_PER_PAGE;
@@ -750,7 +758,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     const heightFromViewport =
       availH / (aspect * heightScale + overhangTop + overhangBottom);
     const cssWidth = Math.floor(
-      Math.min(widthFromViewport, heightFromViewport) * zoom,
+      Math.min(widthFromViewport, heightFromViewport) * zoom
     );
     const cssHeight = Math.floor(cssWidth * aspect);
     if (cssWidth < 1 || cssHeight < 1) return;
@@ -776,11 +784,11 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     const stackShadeFull = 0.06;
     leftStack.style.setProperty(
       "--stack-shade",
-      String(Math.min(1, leftRatio / stackShadeFull)),
+      String(Math.min(1, leftRatio / stackShadeFull))
     );
     rightStack.style.setProperty(
       "--stack-shade",
-      String(Math.min(1, rightRatio / stackShadeFull)),
+      String(Math.min(1, rightRatio / stackShadeFull))
     );
     leftStack.style.setProperty("--stack-scale", String(leftStackScale));
     rightStack.style.setProperty("--stack-scale", String(rightStackScale));
@@ -840,7 +848,15 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
 
     await Promise.all([
       left !== null
-        ? renderPage(pdf, left, leftCanvas, leftText, leftFaceW, leftFaceH, token)
+        ? renderPage(
+            pdf,
+            left,
+            leftCanvas,
+            leftText,
+            leftFaceW,
+            leftFaceH,
+            token
+          )
         : clearPage(leftCanvas, leftText),
       right !== null
         ? renderPage(
@@ -850,7 +866,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
             rightText,
             rightFaceW,
             rightFaceH,
-            token,
+            token
           )
         : clearPage(rightCanvas, rightText),
     ]);
@@ -873,17 +889,11 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     textContainer: HTMLElement,
     cssWidth: number,
     cssHeight: number,
-    token: number,
+    token: number
   ) {
     cancelTextLayer(textContainer);
 
-    const raster = await getRaster(
-      doc,
-      pageNumber,
-      cssWidth,
-      cssHeight,
-      token,
-    );
+    const raster = await getRaster(doc, pageNumber, cssWidth, cssHeight, token);
     if (!raster || token !== renderToken) return;
 
     // Resize clears the bitmap; blit the cached raster in the same turn so
