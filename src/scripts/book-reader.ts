@@ -674,6 +674,20 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
 
     leftBtn.dataset.empty = String(left === null);
     rightBtn.dataset.empty = String(right === null);
+    // End-sheet pastedowns: page 2 (front) and pageCount − 1 (back, mirrored).
+    const backPastedownPage = pageCount > 2 ? pageCount - 1 : null;
+    const pastedownFor = (page: number | null): "front" | "back" | null => {
+      if (page === null) return null;
+      if (page === 2) return "front";
+      if (backPastedownPage !== null && page === backPastedownPage) return "back";
+      return null;
+    };
+    const leftPastedown = pastedownFor(left);
+    const rightPastedown = pastedownFor(right);
+    if (leftPastedown) leftBtn.dataset.pastedown = leftPastedown;
+    else delete leftBtn.dataset.pastedown;
+    if (rightPastedown) rightBtn.dataset.pastedown = rightPastedown;
+    else delete rightBtn.dataset.pastedown;
     turnPrevBtn.disabled = !canPrev;
     turnNextBtn.disabled = !canNext;
     syncPager();

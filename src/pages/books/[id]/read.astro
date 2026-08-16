@@ -133,6 +133,7 @@ const innerCover = await getImage({
                     </span>
                   </span>
                   <span class="page-tint" aria-hidden="true"></span>
+                  <span class="page-pastedown" aria-hidden="true"></span>
                   <span class="page-fold" aria-hidden="true"></span>
                   <span class="page-specular" aria-hidden="true"></span>
                 </span>
@@ -147,6 +148,7 @@ const innerCover = await getImage({
                     <span class="page-edge" aria-hidden="true"></span>
                   </span>
                   <span class="page-tint" aria-hidden="true"></span>
+                  <span class="page-pastedown" aria-hidden="true"></span>
                   <span class="page-fold" aria-hidden="true"></span>
                   <span class="page-specular" aria-hidden="true"></span>
                 </span>
@@ -808,6 +810,28 @@ const innerCover = await getImage({
 
   #book[data-cover] .page-tint {
     display: none;
+  }
+
+  /* Front end-sheet (page 2) / back end-sheet (pageCount − 1, mirrored). */
+  .page-pastedown {
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    background-image: url("/pastedown.webp");
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    mix-blend-mode: overlay;
+    opacity: 0.5;
+  }
+
+  .page[data-pastedown] .page-pastedown {
+    display: block;
+  }
+
+  .page[data-pastedown="back"] .page-pastedown {
+    transform: scaleX(-1);
   }
 
   .page-fold {
