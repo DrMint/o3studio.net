@@ -2,6 +2,7 @@
 import { Image } from "astro:assets";
 import type { CollectionEntry } from "astro:content";
 import { getEntries } from "astro:content";
+import BookCover from "./BookCover.astro";
 
 interface Props {
   series: CollectionEntry<"series">;
@@ -24,12 +25,14 @@ const series = {
       <a
         href={`/books/${id}`}
         style={`--light-color: ${data.lightColor}; --dark-color: ${data.darkColor}`}
-      >
-        <Image
+        >
+        <h3>{data.subtitle}</h3>
+        <BookCover
+          reducedShadow
+          opening
           src={data.cover}
           alt={`Cover for ${data.title} - ${data.subtitle}`}
         />
-        <h3>{data.subtitle}</h3>
       </a>
     ))
   }
@@ -51,32 +54,18 @@ const series = {
   section {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 5em;
+    gap: 6em;
 
     & > a {
       color: var(--dark-color);
       text-decoration: none;
 
-      &:hover > img {
-        outline-width: 8px;
-      }
-
       & > h3 {
         font-size: 150%;
-        margin-top: 0.5em;
-        margin-bottom: 0;
+        margin-top: 0;
+        margin-bottom: 0.8em;
         text-align: center;
         font-weight: 700;
-      }
-
-      & > img {
-        width: 100%;
-        height: auto;
-        outline-color: var(--light-color);
-        outline-width: 3px;
-        outline-style: solid;
-        transition-duration: 100ms;
-        transition-property: outline-width, outline-offset;
       }
     }
   }

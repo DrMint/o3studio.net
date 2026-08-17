@@ -7,5 +7,14 @@ const series = await getCollection("series");
 ---
 
 <Html header>
-  {series.map((entry) => <SeriesPreview series={entry} />)}
+  <div>
+    {series.map((entry) => <SeriesPreview series={entry} />)}
+  </div>
 </Html>
+
+<style>
+  div {
+    margin: clamp(24px, 4vw, 64px);
+    margin-top: 0;
+  }
+</style>

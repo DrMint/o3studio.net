@@ -89,10 +89,12 @@ const { header = false } = Astro.props;
   }
 
   body {
-    margin: clamp(24px, 4vw, 64px);
+    min-height: 100vh;
+    margin: 0px;
   }
 
   header {
+    padding-top: clamp(24px, 4vw, 64px);
     display: flex;
     place-items: center;
     place-content: center;
