@@ -6,6 +6,8 @@ import {
 } from "pdfjs-dist";
 import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { initChapterScrubber } from "./chapter-scrubber";
+import { loadPdfChapters } from "./pdf-chapters";
 
 GlobalWorkerOptions.workerSrc = pdfWorker;
 
@@ -100,7 +102,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   const leftText = mustQuery(leftBtn, ".textLayer");
   const rightText = mustQuery(rightBtn, ".textLayer");
   const pageInput = mustQuery(root, "[data-page-input]") as HTMLInputElement;
-  const pageSlider = mustQuery(root, "[data-page-slider]") as HTMLInputElement;
+  const pageScrubberEl = mustQuery(root, "[data-page-scrubber]");
   const pageCountLabel = mustQuery(root, "[data-page-count]");
   const zoomInBtn = mustQuery(root, "[data-zoom-in]");
   const zoomOutBtn = mustQuery(root, "[data-zoom-out]");
@@ -147,8 +149,8 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   const inflightRasters = new Map<string, Promise<HTMLCanvasElement | null>>();
 
   pageInput.max = String(pageCount);
-  pageSlider.max = String(pageCount);
   pageCountLabel.textContent = `/ ${pageCount}`;
+  const chapters = await loadPdfChapters(pdf);
   bookEl.style.setProperty(
     "--spine-thickness",
     String(pageCount * EDGE_WIDTH_PER_PAGE * 2)
@@ -288,34 +290,12 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     }
   });
 
-  pageSlider.addEventListener("keydown", (event) => {
-    // Range inputs step by 1 page natively; that often stays on the same spread
-    // (e.g. 2→3). Use spread turns so both arrows always move the book.
-    if (
-      event.key === "ArrowLeft" ||
-      event.key === "ArrowDown" ||
-      event.key === "PageUp"
-    ) {
-      event.preventDefault();
-      goSpread(-1);
-      return;
-    }
-    if (
-      event.key === "ArrowRight" ||
-      event.key === "ArrowUp" ||
-      event.key === "PageDown"
-    ) {
-      event.preventDefault();
-      goSpread(1);
-    }
-  });
-
-  pageSlider.addEventListener("input", () => {
-    goToPage(Number(pageSlider.value));
-  });
-
-  pageSlider.addEventListener("change", () => {
-    goToPage(Number(pageSlider.value));
+  const pageScrubber = initChapterScrubber(pageScrubberEl, {
+    pageCount,
+    chapters,
+    getPage: () => displayedPage(),
+    onSeek: (page) => goToPage(page),
+    onStep: (delta) => goSpread(delta),
   });
 
   zoomInBtn.addEventListener("click", () => {
@@ -457,7 +437,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   function syncPager() {
     const currentPage = displayedPage();
     pageInput.value = String(currentPage);
-    pageSlider.value = String(currentPage);
+    pageScrubber.setPage(currentPage);
     writeSavedPage(bookId, currentPage);
   }
 

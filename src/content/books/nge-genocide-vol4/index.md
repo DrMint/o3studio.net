@@ -5,4 +5,5 @@ cover: "./cover.jpg"
 innerCover: "./inner-cover.png"
 lightColor: "#ABABAB"
 darkColor: "#CA820C"
+trackColor: "#DACCBB"
 ---

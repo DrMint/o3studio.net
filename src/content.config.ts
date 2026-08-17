@@ -12,6 +12,7 @@ const booksCollection = defineCollection({
       innerCover: image(),
       darkColor: z.string(),
       lightColor: z.string(),
+      trackColor: z.string(),
       upcoming: z.boolean().default(false),
     }),
 });
