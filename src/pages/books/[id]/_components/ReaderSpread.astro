@@ -425,6 +425,23 @@ import ReaderPage from "./ReaderPage.astro";
     background-color: rgb(255 255 0 / 0.2);
   }
 
+  .page-face > .searchLayer {
+    position: absolute;
+    inset: 0;
+    z-index: 7;
+    overflow: clip;
+    pointer-events: none;
+  }
+
+  .page-face > .searchLayer > span {
+    position: absolute;
+    background-color: rgb(255 210 0 / 0.45);
+  }
+
+  .page-face > .searchLayer > span.is-current {
+    background-color: rgb(255 140 0 / 0.55);
+  }
+
   /* Apply order: paper → tint → fold → specular */
   .page-face::before {
     content: "";

@@ -14,6 +14,14 @@ import type {
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { initChapterScrubber } from "./chapter-scrubber";
 import { loadPdfChapters, pageForDest } from "./pdf-chapters";
+import {
+  findMatchesInPage,
+  indexPageText,
+  rectsForMatch,
+  type PageTextIndex,
+  type SearchMatch,
+  type SearchOptions,
+} from "./pdf-search";
 
 GlobalWorkerOptions.workerSrc = pdfWorker;
 
@@ -170,6 +178,8 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   const rightText = mustQuery(rightBtn, ".textLayer");
   const leftLinks = mustQuery(leftBtn, ".annotationLayer");
   const rightLinks = mustQuery(rightBtn, ".annotationLayer");
+  const leftSearch = mustQuery(leftBtn, ".searchLayer");
+  const rightSearch = mustQuery(rightBtn, ".searchLayer");
   const pageInput = mustQuery(root, "[data-page-input]") as HTMLInputElement;
   const pageScrubberEl = mustQuery(root, "[data-page-scrubber]");
   const pageCountLabel = mustQuery(root, "[data-page-count]");
@@ -203,6 +213,30 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   ) as HTMLDialogElement;
   const shortcutsCloseBtn = mustQuery(root, "[data-shortcuts-close]");
   const spreadArea = mustQuery(root, "#spread-area");
+  const searchForm = mustQuery(root, "#reader-search") as HTMLFormElement;
+  const searchInput = mustQuery(root, "[data-search-input]") as HTMLInputElement;
+  const searchPrevBtn = mustQuery(
+    root,
+    "[data-search-prev]"
+  ) as HTMLButtonElement;
+  const searchNextBtn = mustQuery(
+    root,
+    "[data-search-next]"
+  ) as HTMLButtonElement;
+  const searchCount = mustQuery(root, "[data-search-count]");
+  const searchCloseBtn = mustQuery(root, "[data-search-close]");
+  const searchMatchCase = mustQuery(
+    root,
+    "[data-search-match-case]"
+  ) as HTMLInputElement;
+  const searchMatchDiacritics = mustQuery(
+    root,
+    "[data-search-match-diacritics]"
+  ) as HTMLInputElement;
+  const searchWholeWords = mustQuery(
+    root,
+    "[data-search-whole-words]"
+  ) as HTMLInputElement;
 
   const pdf = await getDocument({ url: pdfUrl }).promise;
   const pageCount = pdf.numPages;
@@ -297,6 +331,208 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     if (event.target === shortcutsDialog) closeShortcuts();
   });
 
+  const pageTextCache = new Map<number, PageTextIndex>();
+  let pageTextLoad: Promise<void> | null = null;
+  let searchGen = 0;
+  let searchTimer: ReturnType<typeof setTimeout> | undefined;
+  let searchMatches: SearchMatch[] = [];
+  let searchActive = 0;
+  const paintedSearch: {
+    page: number;
+    viewport: PageViewport;
+    layer: HTMLElement;
+  }[] = [];
+
+  function searchOptions(): SearchOptions {
+    return {
+      matchCase: searchMatchCase.checked,
+      matchDiacritics: searchMatchDiacritics.checked,
+      wholeWords: searchWholeWords.checked,
+    };
+  }
+
+  function syncSearchCount() {
+    const total = searchMatches.length;
+    const current = total === 0 ? 0 : searchActive + 1;
+    searchCount.textContent = `${current} of ${total} matches`;
+    searchPrevBtn.disabled = total === 0;
+    searchNextBtn.disabled = total === 0;
+  }
+
+  function clearSearchLayer(container: HTMLElement) {
+    container.replaceChildren();
+    container.hidden = true;
+  }
+
+  function forgetPaintedSearch(layer: HTMLElement) {
+    const index = paintedSearch.findIndex((entry) => entry.layer === layer);
+    if (index !== -1) paintedSearch.splice(index, 1);
+  }
+
+  function paintSearchLayer(
+    layer: HTMLElement,
+    pageNumber: number,
+    viewport: PageViewport
+  ) {
+    forgetPaintedSearch(layer);
+    paintedSearch.push({ page: pageNumber, viewport, layer });
+    layer.replaceChildren();
+    if (searchForm.hidden || searchMatches.length === 0) {
+      layer.hidden = true;
+      return;
+    }
+    const pageIndex = pageTextCache.get(pageNumber);
+    if (!pageIndex) {
+      layer.hidden = true;
+      return;
+    }
+    const fragment = document.createDocumentFragment();
+    let painted = 0;
+    for (let i = 0; i < searchMatches.length; i++) {
+      const match = searchMatches[i]!;
+      if (match.page !== pageNumber) continue;
+      for (const box of rectsForMatch(pageIndex, match.start, match.end, viewport)) {
+        const mark = document.createElement("span");
+        if (i === searchActive) mark.classList.add("is-current");
+        mark.style.left = `${box.left}px`;
+        mark.style.top = `${box.top}px`;
+        mark.style.width = `${box.width}px`;
+        mark.style.height = `${box.height}px`;
+        fragment.append(mark);
+        painted++;
+      }
+    }
+    if (painted === 0) {
+      layer.hidden = true;
+      return;
+    }
+    layer.hidden = false;
+    layer.append(fragment);
+  }
+
+  function refreshSearchHighlights() {
+    for (const entry of [...paintedSearch]) {
+      paintSearchLayer(entry.layer, entry.page, entry.viewport);
+    }
+  }
+
+  async function loadAllPageText() {
+    if (pageTextLoad) return pageTextLoad;
+    pageTextLoad = (async () => {
+      const pending: Promise<void>[] = [];
+      for (let page = 1; page <= pageCount; page++) {
+        pending.push(
+          (async () => {
+            const pdfPage = await pdf.getPage(page);
+            const content = await pdfPage.getTextContent();
+            pageTextCache.set(page, indexPageText(page, content));
+          })()
+        );
+      }
+      await Promise.all(pending);
+    })();
+    try {
+      await pageTextLoad;
+    } catch (error) {
+      pageTextLoad = null;
+      throw error;
+    }
+  }
+
+  async function runSearch() {
+    const gen = ++searchGen;
+    const query = searchInput.value;
+    if (!query.trim()) {
+      searchMatches = [];
+      searchActive = 0;
+      syncSearchCount();
+      refreshSearchHighlights();
+      return;
+    }
+    await loadAllPageText();
+    if (gen !== searchGen) return;
+    const options = searchOptions();
+    const matches: SearchMatch[] = [];
+    for (let page = 1; page <= pageCount; page++) {
+      const index = pageTextCache.get(page);
+      if (index) matches.push(...findMatchesInPage(index, query, options));
+    }
+    if (gen !== searchGen) return;
+    searchMatches = matches;
+    const currentPage = displayedPage();
+    const nearby = matches.findIndex((match) => match.page >= currentPage);
+    searchActive = nearby === -1 ? 0 : nearby;
+    syncSearchCount();
+    if (matches.length > 0) await goToSearchMatch(searchActive);
+    else refreshSearchHighlights();
+  }
+
+  function scheduleSearch() {
+    window.clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      searchTimer = undefined;
+      void runSearch();
+    }, 120);
+  }
+
+  async function goToSearchMatch(index: number) {
+    if (searchMatches.length === 0) return;
+    searchActive =
+      ((index % searchMatches.length) + searchMatches.length) %
+      searchMatches.length;
+    syncSearchCount();
+    const match = searchMatches[searchActive]!;
+    await goToPage(match.page);
+    refreshSearchHighlights();
+  }
+
+  function openSearch() {
+    closeShortcuts();
+    searchForm.hidden = false;
+    searchInput.focus();
+    searchInput.select();
+    if (searchInput.value.trim() && searchMatches.length === 0) {
+      void runSearch();
+    }
+  }
+
+  function closeSearch() {
+    window.clearTimeout(searchTimer);
+    searchTimer = undefined;
+    searchGen++;
+    searchForm.hidden = true;
+    searchMatches = [];
+    searchActive = 0;
+    syncSearchCount();
+    refreshSearchHighlights();
+  }
+
+  searchForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void goToSearchMatch(searchActive + 1);
+  });
+  searchInput.addEventListener("input", () => scheduleSearch());
+  searchInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    void goToSearchMatch(searchActive + (event.shiftKey ? -1 : 1));
+  });
+  searchPrevBtn.addEventListener("click", () => {
+    void goToSearchMatch(searchActive - 1);
+  });
+  searchNextBtn.addEventListener("click", () => {
+    void goToSearchMatch(searchActive + 1);
+  });
+  searchCloseBtn.addEventListener("click", () => closeSearch());
+  for (const box of [
+    searchMatchCase,
+    searchMatchDiacritics,
+    searchWholeWords,
+  ]) {
+    box.addEventListener("change", () => void runSearch());
+  }
+  syncSearchCount();
+
   let fitFrame = 0;
   function scheduleFit() {
     window.cancelAnimationFrame(fitFrame);
@@ -370,6 +606,20 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   }
 
   window.addEventListener("keydown", (event) => {
+    if (
+      (event.ctrlKey || event.metaKey) &&
+      event.key.toLowerCase() === "f" &&
+      !event.altKey
+    ) {
+      event.preventDefault();
+      openSearch();
+      return;
+    }
+    if (!searchForm.hidden && event.key === "Escape") {
+      event.preventDefault();
+      closeSearch();
+      return;
+    }
     if (isEditableTarget(event.target)) return;
     if (
       event.key === "?" &&
@@ -537,21 +787,21 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     void showSpread();
   }
 
-  function goToPage(page: number) {
+  function goToPage(page: number): Promise<void> {
     window.clearTimeout(zoomTimer);
     zoomTimer = undefined;
     if (!Number.isFinite(page)) {
       syncPager();
-      return;
+      return Promise.resolve();
     }
     const next = clamp(Math.round(page), 1, pageCount);
     const nextSpread = spreadForPage(next);
     if (nextSpread === spread) {
       syncPager();
-      return;
+      return Promise.resolve();
     }
     spread = nextSpread;
-    void showSpread();
+    return showSpread();
   }
 
   function goToChapter(direction: -1 | 1) {
@@ -1002,11 +1252,12 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
             leftCanvas,
             leftText,
             leftLinks,
+            leftSearch,
             leftFaceW,
             leftFaceH,
             token
           )
-        : clearPage(leftCanvas, leftText, leftLinks),
+        : clearPage(leftCanvas, leftText, leftLinks, leftSearch),
       right !== null
         ? renderPage(
             pdf,
@@ -1014,11 +1265,12 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
             rightCanvas,
             rightText,
             rightLinks,
+            rightSearch,
             rightFaceW,
             rightFaceH,
             token
           )
-        : clearPage(rightCanvas, rightText, rightLinks),
+        : clearPage(rightCanvas, rightText, rightLinks, rightSearch),
     ]);
 
     if (token !== renderToken) return;
@@ -1122,12 +1374,15 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     canvas: HTMLCanvasElement,
     textContainer: HTMLElement,
     linkContainer: HTMLElement,
+    searchContainer: HTMLElement,
     cssWidth: number,
     cssHeight: number,
     token: number
   ) {
     cancelTextLayer(textContainer);
     clearLinkLayer(linkContainer);
+    clearSearchLayer(searchContainer);
+    forgetPaintedSearch(searchContainer);
 
     const raster = await getRaster(doc, pageNumber, cssWidth, cssHeight, token);
     if (!raster || token !== renderToken) return;
@@ -1169,6 +1424,8 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
         textContainer.replaceChildren();
         textContainer.hidden = true;
         clearLinkLayer(linkContainer);
+        clearSearchLayer(searchContainer);
+        forgetPaintedSearch(searchContainer);
         return;
       }
     } catch {
@@ -1180,19 +1437,25 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     const annotations = await annotationsPromise;
     if (token !== renderToken) {
       clearLinkLayer(linkContainer);
+      clearSearchLayer(searchContainer);
+      forgetPaintedSearch(searchContainer);
       return;
     }
     fillLinkLayer(linkContainer, annotations, textViewport);
+    paintSearchLayer(searchContainer, pageNumber, textViewport);
   }
 
   function clearPage(
     canvas: HTMLCanvasElement,
     textContainer: HTMLElement,
-    linkContainer: HTMLElement
+    linkContainer: HTMLElement,
+    searchContainer: HTMLElement
   ) {
     cancelRender(canvas);
     clearTextLayer(textContainer);
     clearLinkLayer(linkContainer);
+    clearSearchLayer(searchContainer);
+    forgetPaintedSearch(searchContainer);
     const context = canvas.getContext("2d");
     if (context) context.clearRect(0, 0, canvas.width, canvas.height);
     canvas.width = 0;

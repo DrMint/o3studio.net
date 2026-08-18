@@ -18,6 +18,8 @@ export default defineConfig({
           "devices",
           "close",
           "keyboard-command-key",
+          "keyboard-arrow-up",
+          "keyboard-arrow-down",
         ],
       },
     }),

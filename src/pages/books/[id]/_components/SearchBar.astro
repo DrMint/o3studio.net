@@ -1,0 +1,156 @@
+---
+import Icon from "../../../../components/Icon.astro";
+---
+
+<form id="reader-search" hidden autocomplete="off">
+  <div class="search-row">
+    <input
+      type="search"
+      data-search-input
+      placeholder="Find in book"
+      aria-label="Find in book"
+      spellcheck="false"
+    />
+    <button type="button" data-search-prev aria-label="Previous match">
+      <Icon name="keyboard_arrow_up" />
+    </button>
+    <button type="button" data-search-next aria-label="Next match">
+      <Icon name="keyboard_arrow_down" />
+    </button>
+    <span data-search-count aria-live="polite">0 of 0 matches</span>
+    <button type="button" data-search-close aria-label="Close search">
+      <Icon name="close" />
+    </button>
+  </div>
+  <div class="search-options">
+    <label>
+      <input type="checkbox" data-search-match-case />
+      Match Case
+    </label>
+    <label>
+      <input type="checkbox" data-search-match-diacritics />
+      Match Diacritics
+    </label>
+    <label>
+      <input type="checkbox" data-search-whole-words />
+      Whole Words
+    </label>
+  </div>
+</form>
+
+<style>
+  #reader-search {
+    position: fixed;
+    z-index: 15;
+    left: 50%;
+    bottom: clamp(12px, 2vw, 28px);
+    transform: translateX(-50%);
+    box-sizing: border-box;
+    width: min(42rem, calc(100vw - 2rem));
+    padding: 0.7rem 0.85rem 0.75rem;
+    border: 3px solid var(--dark-color);
+    background: white;
+    color: var(--dark-color);
+    font: inherit;
+  }
+
+  .search-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+  }
+
+  [data-search-input] {
+    box-sizing: border-box;
+    flex: 1;
+    min-width: 0;
+    height: 2.5rem;
+    margin: 0;
+    padding: 0 0.7em;
+    border: 3px solid var(--dark-color);
+    background: white;
+    color: var(--dark-color);
+    font: inherit;
+    font-weight: 600;
+  }
+
+  [data-search-prev],
+  [data-search-next],
+  [data-search-close] {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 3px solid var(--dark-color);
+    background: white;
+    color: var(--dark-color);
+    font: inherit;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  [data-search-prev]:hover,
+  [data-search-prev]:focus-visible,
+  [data-search-next]:hover,
+  [data-search-next]:focus-visible,
+  [data-search-close]:hover,
+  [data-search-close]:focus-visible {
+    background: var(--dark-color);
+    color: white;
+  }
+
+  [data-search-prev]:disabled,
+  [data-search-next]:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  [data-search-prev]:disabled:hover,
+  [data-search-next]:disabled:hover {
+    background: white;
+    color: var(--dark-color);
+  }
+
+  [data-search-count] {
+    flex: 0 0 auto;
+    min-width: 8.5em;
+    padding: 0 0.35em;
+    font-weight: 600;
+    font-size: 0.95rem;
+    white-space: nowrap;
+  }
+
+  [data-search-close] {
+    margin-left: auto;
+  }
+
+  .search-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1.1rem;
+    margin-top: 0.55rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .search-options label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .search-options input {
+    margin: 0;
+    accent-color: var(--dark-color);
+    width: 1.05em;
+    height: 1.05em;
+  }
+</style>
