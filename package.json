@@ -14,9 +14,9 @@
     "upgrade": "npx @astrojs/upgrade && ncu"
   },
   "dependencies": {
-    "@iconify-json/material-symbols": "^1.2.88",
-    "astro": "^7.2.0",
-    "astro-icon": "^1.1.5",
+    "@iconify-json/material-symbols": "^1.2.89",
+    "astro": "^7.2.3",
+    "astro-icon": "^1.2.0",
     "pdfjs-dist": "^6.2.108"
   },
   "devDependencies": {
