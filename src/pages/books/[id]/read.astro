@@ -121,6 +121,15 @@ const innerCover = await getImage({
     display: contents;
   }
 
+  .textLayer mark {
+    color: transparent;
+    background-color: rgb(255 210 0 / 0.45);
+  }
+
+  .textLayer mark.is-current {
+    background-color: rgb(255 140 0 / 0.55);
+  }
+
   .textLayer ::selection {
     background: rgb(0 100 255 / 0.35);
   }

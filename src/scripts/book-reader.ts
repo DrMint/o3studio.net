@@ -18,6 +18,8 @@ import {
   findMatchesInPage,
   indexPageText,
   rectsForMatch,
+  highlightMatchesInTextLayer,
+  clearTextLayerHighlights,
   type PageTextIndex,
   type SearchMatch,
   type SearchOptions,
@@ -214,7 +216,10 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   const shortcutsCloseBtn = mustQuery(root, "[data-shortcuts-close]");
   const spreadArea = mustQuery(root, "#spread-area");
   const searchForm = mustQuery(root, "#reader-search") as HTMLFormElement;
-  const searchInput = mustQuery(root, "[data-search-input]") as HTMLInputElement;
+  const searchInput = mustQuery(
+    root,
+    "[data-search-input]"
+  ) as HTMLInputElement;
   const searchPrevBtn = mustQuery(
     root,
     "[data-search-prev]"
@@ -359,9 +364,15 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     searchNextBtn.disabled = total === 0;
   }
 
+  function clearSearchPaint(layer: HTMLElement) {
+    layer.replaceChildren();
+    layer.hidden = true;
+    const textRoot = layer.parentElement?.querySelector(":scope > .textLayer");
+    if (textRoot instanceof HTMLElement) clearTextLayerHighlights(textRoot);
+  }
+
   function clearSearchLayer(container: HTMLElement) {
-    container.replaceChildren();
-    container.hidden = true;
+    clearSearchPaint(container);
   }
 
   function forgetPaintedSearch(layer: HTMLElement) {
@@ -378,26 +389,59 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     paintedSearch.push({ page: pageNumber, viewport, layer });
     layer.replaceChildren();
     if (searchForm.hidden || searchMatches.length === 0) {
+      const textRoot = layer.parentElement?.querySelector(":scope > .textLayer");
+      if (textRoot instanceof HTMLElement) clearTextLayerHighlights(textRoot);
       layer.hidden = true;
       return;
     }
     const pageIndex = pageTextCache.get(pageNumber);
     if (!pageIndex) {
+      const textRoot = layer.parentElement?.querySelector(":scope > .textLayer");
+      if (textRoot instanceof HTMLElement) clearTextLayerHighlights(textRoot);
       layer.hidden = true;
       return;
+    }
+    const textRoot = layer.parentElement?.querySelector(":scope > .textLayer");
+    if (textRoot instanceof HTMLElement) {
+      const pageMatches = searchMatches.flatMap((match, i) =>
+        match.page === pageNumber
+          ? [
+              {
+                start: match.start,
+                end: match.end,
+                current: i === searchActive,
+              },
+            ]
+          : []
+      );
+      if (pageMatches.length === 0) {
+        clearTextLayerHighlights(textRoot);
+        layer.hidden = true;
+        return;
+      }
+      if (highlightMatchesInTextLayer(textRoot, pageIndex, pageMatches)) {
+        layer.hidden = true;
+        return;
+      }
+      clearTextLayerHighlights(textRoot);
     }
     const fragment = document.createDocumentFragment();
     let painted = 0;
     for (let i = 0; i < searchMatches.length; i++) {
       const match = searchMatches[i]!;
       if (match.page !== pageNumber) continue;
-      for (const box of rectsForMatch(pageIndex, match.start, match.end, viewport)) {
+      for (const box of rectsForMatch(
+        pageIndex,
+        match.start,
+        match.end,
+        viewport
+      )) {
         const mark = document.createElement("span");
         if (i === searchActive) mark.classList.add("is-current");
-        mark.style.left = `${box.left}px`;
-        mark.style.top = `${box.top}px`;
-        mark.style.width = `${box.width}px`;
-        mark.style.height = `${box.height}px`;
+        mark.style.left = `${box.left}%`;
+        mark.style.top = `${box.top}%`;
+        mark.style.width = `${box.width}%`;
+        mark.style.height = `${box.height}%`;
         fragment.append(mark);
         painted++;
       }
@@ -424,7 +468,9 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
         pending.push(
           (async () => {
             const pdfPage = await pdf.getPage(page);
-            const content = await pdfPage.getTextContent();
+            const content = await pdfPage.getTextContent({
+              includeMarkedContent: true,
+            });
             pageTextCache.set(page, indexPageText(page, content));
           })()
         );
@@ -1302,7 +1348,8 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   }
 
   function bindPdfLink(anchor: HTMLAnchorElement, annot: PdfLinkAnnot) {
-    const label = typeof annot.overlaidText === "string" ? annot.overlaidText : "";
+    const label =
+      typeof annot.overlaidText === "string" ? annot.overlaidText : "";
     if (typeof annot.url === "string" && annot.url) {
       anchor.href = annot.url;
       anchor.target = annot.newWindow === false ? "_self" : "_blank";
