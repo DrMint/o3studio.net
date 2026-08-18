@@ -124,6 +124,15 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     root,
     "#fullscreen-exit"
   ) as HTMLButtonElement;
+  const shortcutsOpenBtn = mustQuery(
+    root,
+    "#shortcuts-open"
+  ) as HTMLButtonElement;
+  const shortcutsDialog = mustQuery(
+    root,
+    "#shortcuts-dialog"
+  ) as HTMLDialogElement;
+  const shortcutsCloseBtn = mustQuery(root, "[data-shortcuts-close]");
   const spreadArea = mustQuery(root, "#spread-area");
 
   const pdf = await getDocument({ url: pdfUrl }).promise;
@@ -186,6 +195,11 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     }
   }
 
+  async function toggleFullscreen() {
+    if (isSpreadFullscreen()) await exitFullscreen();
+    else await enterFullscreen();
+  }
+
   fullscreenEnterBtn.addEventListener("click", () => void enterFullscreen());
   fullscreenExitBtn.addEventListener("click", () => void exitFullscreen());
   document.addEventListener("fullscreenchange", () => {
@@ -194,6 +208,25 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     scheduleFit();
   });
   syncFullscreenUi();
+
+  function openShortcuts() {
+    if (!shortcutsDialog.open) shortcutsDialog.showModal();
+  }
+
+  function closeShortcuts() {
+    if (shortcutsDialog.open) shortcutsDialog.close();
+  }
+
+  function toggleShortcuts() {
+    if (shortcutsDialog.open) closeShortcuts();
+    else openShortcuts();
+  }
+
+  shortcutsOpenBtn.addEventListener("click", () => openShortcuts());
+  shortcutsCloseBtn.addEventListener("click", () => closeShortcuts());
+  shortcutsDialog.addEventListener("click", (event) => {
+    if (event.target === shortcutsDialog) closeShortcuts();
+  });
 
   let fitFrame = 0;
   function scheduleFit() {
@@ -270,6 +303,17 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   window.addEventListener("keydown", (event) => {
     if (isEditableTarget(event.target)) return;
     if (
+      event.key === "?" &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey
+    ) {
+      event.preventDefault();
+      toggleShortcuts();
+      return;
+    }
+    if (shortcutsDialog.open) return;
+    if (
       (event.ctrlKey || event.metaKey) &&
       (event.key === "ArrowLeft" || event.key === "ArrowRight")
     ) {
@@ -287,14 +331,14 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
       goSpread(1);
       return;
     }
-    if (event.key === "Home") {
+    if (
+      event.key.toLowerCase() === "f" &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey
+    ) {
       event.preventDefault();
-      goToPage(1);
-      return;
-    }
-    if (event.key === "End") {
-      event.preventDefault();
-      goToPage(pageCount);
+      void toggleFullscreen();
     }
   });
 

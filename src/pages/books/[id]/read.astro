@@ -5,6 +5,7 @@ import Html from "../../../components/Html.astro";
 import Button from "../../../components/Button.astro";
 import Icon from "../../../components/Icon.astro";
 import ChapterScrubber from "../../../components/ChapterScrubber.astro";
+import ShortcutsDialog from "./_components/ShortcutsDialog.astro";
 
 export async function getStaticPaths() {
   const series = await getCollection("series");
@@ -80,6 +81,14 @@ const innerCover = await getImage({
           <Icon name="download" />
           Download
         </Button>
+        <button
+          type="button"
+          id="shortcuts-open"
+          aria-label="Keyboard shortcuts"
+          title="Keyboard shortcuts"
+        >
+          <span class="shortcuts-open-icon" aria-hidden="true"></span>
+        </button>
         <button
           type="button"
           id="fullscreen-enter"
@@ -164,6 +173,7 @@ const innerCover = await getImage({
         <Icon name="chevron_right" size="2rem" />
       </button>
     </div>
+    <ShortcutsDialog />
     <div
       id="small-screen-overlay"
       role="dialog"
@@ -430,7 +440,8 @@ const innerCover = await getImage({
   }
 
   #fullscreen-enter,
-  #fullscreen-exit {
+  #fullscreen-exit,
+  #shortcuts-open {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -451,9 +462,19 @@ const innerCover = await getImage({
   #fullscreen-enter:hover,
   #fullscreen-enter:focus-visible,
   #fullscreen-exit:hover,
-  #fullscreen-exit:focus-visible {
+  #fullscreen-exit:focus-visible,
+  #shortcuts-open:hover,
+  #shortcuts-open:focus-visible {
     background: var(--dark-color);
     color: white;
+  }
+
+  .shortcuts-open-icon {
+    width: 1.65rem;
+    height: 1.65rem;
+    background-color: currentColor;
+    -webkit-mask: url("/keyboard/keyboard.svg") center / contain no-repeat;
+    mask: url("/keyboard/keyboard.svg") center / contain no-repeat;
   }
 
   #fullscreen-exit {

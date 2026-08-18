@@ -16,6 +16,7 @@ export default defineConfig({
           "fullscreen",
           "fullscreen-exit",
           "devices",
+          "close",
         ],
       },
     }),
