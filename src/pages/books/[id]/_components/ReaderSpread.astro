@@ -404,6 +404,27 @@ import ReaderPage from "./ReaderPage.astro";
     z-index: 1;
   }
 
+  .page-face > .annotationLayer {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    overflow: clip;
+    pointer-events: none;
+    transform-origin: 0 0;
+  }
+
+  .page-face > .annotationLayer > a {
+    position: absolute;
+    pointer-events: auto;
+    cursor: pointer;
+    color: transparent;
+  }
+
+  .page-face > .annotationLayer > a:hover,
+  .page-face > .annotationLayer > a:focus-visible {
+    background-color: rgb(255 255 0 / 0.2);
+  }
+
   /* Apply order: paper → tint → fold → specular */
   .page-face::before {
     content: "";

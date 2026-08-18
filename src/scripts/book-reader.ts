@@ -1,13 +1,19 @@
 import {
+  AnnotationType,
   getDocument,
   GlobalWorkerOptions,
   RenderingCancelledException,
   TextLayer,
 } from "pdfjs-dist";
-import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from "pdfjs-dist";
+import type {
+  PDFDocumentProxy,
+  PDFPageProxy,
+  PageViewport,
+  RenderTask,
+} from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { initChapterScrubber } from "./chapter-scrubber";
-import { loadPdfChapters } from "./pdf-chapters";
+import { loadPdfChapters, pageForDest } from "./pdf-chapters";
 
 GlobalWorkerOptions.workerSrc = pdfWorker;
 
@@ -35,6 +41,67 @@ function spreadForPage(page: number): number {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+type PdfLinkAnnot = {
+  annotationType: number;
+  rect?: number[];
+  url?: string;
+  dest?: string | unknown[] | null;
+  action?: string;
+  newWindow?: boolean;
+  overlaidText?: string;
+  quadPoints?: ArrayLike<number>;
+};
+
+function viewportBox(
+  viewport: PageViewport,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
+) {
+  const a = viewport.convertToViewportPoint(x1, y1);
+  const b = viewport.convertToViewportPoint(x2, y2);
+  const left = Math.min(a[0], b[0]);
+  const top = Math.min(a[1], b[1]);
+  return {
+    left,
+    top,
+    width: Math.abs(b[0] - a[0]),
+    height: Math.abs(b[1] - a[1]),
+  };
+}
+
+function linkBoxes(annot: PdfLinkAnnot, viewport: PageViewport) {
+  const quads = annot.quadPoints;
+  if (quads && quads.length >= 8) {
+    const boxes = [];
+    for (let i = 0; i + 7 < quads.length; i += 8) {
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (let j = 0; j < 8; j += 2) {
+        const x = quads[i + j]!;
+        const y = quads[i + j + 1]!;
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+      boxes.push(viewportBox(viewport, minX, minY, maxX, maxY));
+    }
+    return boxes;
+  }
+  const rect = annot.rect;
+  if (!rect || rect.length < 4) return [];
+  return [viewportBox(viewport, rect[0]!, rect[1]!, rect[2]!, rect[3]!)];
+}
+
+function clearLinkLayer(container: HTMLElement) {
+  container.replaceChildren();
+  container.hidden = true;
 }
 
 /**
@@ -101,6 +168,8 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   const rightCanvas = mustQuery(rightBtn, "canvas") as HTMLCanvasElement;
   const leftText = mustQuery(leftBtn, ".textLayer");
   const rightText = mustQuery(rightBtn, ".textLayer");
+  const leftLinks = mustQuery(leftBtn, ".annotationLayer");
+  const rightLinks = mustQuery(rightBtn, ".annotationLayer");
   const pageInput = mustQuery(root, "[data-page-input]") as HTMLInputElement;
   const pageScrubberEl = mustQuery(root, "[data-page-scrubber]");
   const pageCountLabel = mustQuery(root, "[data-page-count]");
@@ -932,22 +1001,24 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
             left,
             leftCanvas,
             leftText,
+            leftLinks,
             leftFaceW,
             leftFaceH,
             token
           )
-        : clearPage(leftCanvas, leftText),
+        : clearPage(leftCanvas, leftText, leftLinks),
       right !== null
         ? renderPage(
             pdf,
             right,
             rightCanvas,
             rightText,
+            rightLinks,
             rightFaceW,
             rightFaceH,
             token
           )
-        : clearPage(rightCanvas, rightText),
+        : clearPage(rightCanvas, rightText, rightLinks),
     ]);
 
     if (token !== renderToken) return;
@@ -961,16 +1032,102 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     prefetchAdjacent(spread, cssWidth, cssHeight, epoch);
   }
 
+  function executeNamedAction(action: string) {
+    const { left, right } = pagesForSpread(spread, pageCount);
+    switch (action) {
+      case "FirstPage":
+        goToPage(1);
+        return;
+      case "LastPage":
+        goToPage(pageCount);
+        return;
+      case "NextPage":
+        goToPage(Math.max(left ?? 0, right ?? 0) + 1);
+        return;
+      case "PrevPage":
+        goToPage(Math.min(left ?? pageCount, right ?? pageCount) - 1);
+    }
+  }
+
+  function bindPdfLink(anchor: HTMLAnchorElement, annot: PdfLinkAnnot) {
+    const label = typeof annot.overlaidText === "string" ? annot.overlaidText : "";
+    if (typeof annot.url === "string" && annot.url) {
+      anchor.href = annot.url;
+      anchor.target = annot.newWindow === false ? "_self" : "_blank";
+      anchor.rel = "noopener noreferrer";
+      if (label) anchor.title = label;
+      return;
+    }
+    if (annot.dest != null && annot.dest !== "") {
+      const dest = annot.dest;
+      anchor.href = "#";
+      if (label) anchor.title = label;
+      anchor.addEventListener("click", (event) => {
+        event.preventDefault();
+        void pageForDest(pdf, dest).then((page) => {
+          if (page !== null) goToPage(page);
+        });
+      });
+      return;
+    }
+    if (typeof annot.action === "string" && annot.action) {
+      anchor.href = "#";
+      if (label) anchor.title = label;
+      anchor.addEventListener("click", (event) => {
+        event.preventDefault();
+        executeNamedAction(annot.action!);
+      });
+    }
+  }
+
+  function fillLinkLayer(
+    container: HTMLElement,
+    annotations: PdfLinkAnnot[],
+    viewport: PageViewport
+  ) {
+    container.replaceChildren();
+    const links = annotations.filter(
+      (annot) => annot.annotationType === AnnotationType.LINK
+    );
+    if (links.length === 0) {
+      container.hidden = true;
+      return;
+    }
+    container.hidden = false;
+    const fragment = document.createDocumentFragment();
+    for (const annot of links) {
+      if (!annot.url && annot.dest == null && !annot.action) continue;
+      for (const box of linkBoxes(annot, viewport)) {
+        if (box.width < 1 || box.height < 1) continue;
+        const anchor = document.createElement("a");
+        anchor.style.left = `${box.left}px`;
+        anchor.style.top = `${box.top}px`;
+        anchor.style.width = `${box.width}px`;
+        anchor.style.height = `${box.height}px`;
+        bindPdfLink(anchor, annot);
+        if (!anchor.href) continue;
+        fragment.append(anchor);
+      }
+    }
+    if (!fragment.childNodes.length) {
+      container.hidden = true;
+      return;
+    }
+    container.append(fragment);
+  }
+
   async function renderPage(
     doc: PDFDocumentProxy,
     pageNumber: number,
     canvas: HTMLCanvasElement,
     textContainer: HTMLElement,
+    linkContainer: HTMLElement,
     cssWidth: number,
     cssHeight: number,
     token: number
   ) {
     cancelTextLayer(textContainer);
+    clearLinkLayer(linkContainer);
 
     const raster = await getRaster(doc, pageNumber, cssWidth, cssHeight, token);
     if (!raster || token !== renderToken) return;
@@ -1004,23 +1161,38 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
       viewport: textViewport,
     });
     textLayers.set(textContainer, textLayer);
+    const annotationsPromise = page.getAnnotations({ intent: "display" });
     try {
       await textLayer.render();
       if (token !== renderToken) {
         cancelTextLayer(textContainer);
         textContainer.replaceChildren();
         textContainer.hidden = true;
+        clearLinkLayer(linkContainer);
+        return;
       }
     } catch {
       if (textLayers.get(textContainer) === textLayer) {
         textLayers.delete(textContainer);
       }
     }
+
+    const annotations = await annotationsPromise;
+    if (token !== renderToken) {
+      clearLinkLayer(linkContainer);
+      return;
+    }
+    fillLinkLayer(linkContainer, annotations, textViewport);
   }
 
-  function clearPage(canvas: HTMLCanvasElement, textContainer: HTMLElement) {
+  function clearPage(
+    canvas: HTMLCanvasElement,
+    textContainer: HTMLElement,
+    linkContainer: HTMLElement
+  ) {
     cancelRender(canvas);
     clearTextLayer(textContainer);
+    clearLinkLayer(linkContainer);
     const context = canvas.getContext("2d");
     if (context) context.clearRect(0, 0, canvas.width, canvas.height);
     canvas.width = 0;

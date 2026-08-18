@@ -20,7 +20,7 @@ function flattenOutline(nodes: OutlineNode[]): OutlineNode[] {
   return flat;
 }
 
-async function pageForDest(
+export async function pageForDest(
   pdf: PDFDocumentProxy,
   dest: string | unknown[] | null
 ): Promise<number | null> {
