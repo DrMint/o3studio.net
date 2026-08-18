@@ -106,10 +106,9 @@ export function initChapterScrubber(
     chapters: Chapter[];
     getPage: () => number;
     onSeek: (page: number) => void;
-    onStep: (delta: number) => void;
   }
 ): ChapterScrubber {
-  const { pageCount, chapters, getPage, onSeek, onStep } = opts;
+  const { pageCount, chapters, getPage, onSeek } = opts;
   const sliderEl = root.querySelector("[data-scrubber-slider]");
   const trackEl = root.querySelector("[data-scrubber-track]");
   const tooltipEl = root.querySelector("[data-scrubber-tooltip]");
@@ -320,36 +319,6 @@ export function initChapterScrubber(
 
   slider.addEventListener("pointerleave", () => {
     if (!dragging) hideTooltip();
-  });
-
-  slider.addEventListener("keydown", (event) => {
-    if (
-      event.key === "ArrowLeft" ||
-      event.key === "ArrowDown" ||
-      event.key === "PageUp"
-    ) {
-      event.preventDefault();
-      onStep(-1);
-      return;
-    }
-    if (
-      event.key === "ArrowRight" ||
-      event.key === "ArrowUp" ||
-      event.key === "PageDown"
-    ) {
-      event.preventDefault();
-      onStep(1);
-      return;
-    }
-    if (event.key === "Home") {
-      event.preventDefault();
-      onSeek(1);
-      return;
-    }
-    if (event.key === "End") {
-      event.preventDefault();
-      onSeek(pageCount);
-    }
   });
 
   paint(spreadForPage(getPage()));

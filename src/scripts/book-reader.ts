@@ -269,6 +269,14 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
 
   window.addEventListener("keydown", (event) => {
     if (isEditableTarget(event.target)) return;
+    if (
+      (event.ctrlKey || event.metaKey) &&
+      (event.key === "ArrowLeft" || event.key === "ArrowRight")
+    ) {
+      event.preventDefault();
+      goToChapter(event.key === "ArrowRight" ? 1 : -1);
+      return;
+    }
     if (event.key === "ArrowLeft" || event.key === "PageUp") {
       event.preventDefault();
       goSpread(-1);
@@ -295,7 +303,6 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     chapters,
     getPage: () => displayedPage(),
     onSeek: (page) => goToPage(page),
-    onStep: (delta) => goSpread(delta),
   });
 
   zoomInBtn.addEventListener("click", () => {
@@ -432,6 +439,24 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     }
     spread = nextSpread;
     void showSpread();
+  }
+
+  function goToChapter(direction: -1 | 1) {
+    const starts = [
+      ...new Set(chapters.map((chapter) => spreadForPage(chapter.page))),
+    ].sort((a, b) => a - b);
+    const stops =
+      starts.length === 0 || starts[0] === 0 ? starts : [0, ...starts];
+    const target =
+      direction > 0
+        ? stops.find((start) => start > spread)
+        : [...stops].reverse().find((start) => start < spread);
+    if (target === undefined) {
+      if (direction > 0) goToPage(pageCount);
+      return;
+    }
+    const { left, right } = pagesForSpread(target, pageCount);
+    goToPage(left ?? right ?? 1);
   }
 
   function syncPager() {
