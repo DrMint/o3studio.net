@@ -93,6 +93,32 @@ export function indexPageText(
   return { page, text, runs };
 }
 
+function prevCodePoint(text: string, index: number): number | undefined {
+  if (index <= 0) return undefined;
+  if (index >= 2) {
+    const cp = text.codePointAt(index - 2);
+    if (cp !== undefined && cp > 0xffff) return cp;
+  }
+  return text.codePointAt(index - 1);
+}
+
+function isLetterCp(cp: number | undefined): boolean {
+  return cp !== undefined && /\p{L}/u.test(String.fromCodePoint(cp));
+}
+
+function isCjkCp(cp: number | undefined): boolean {
+  if (cp === undefined) return false;
+  return (
+    (cp >= 0x3400 && cp <= 0x9fff) ||
+    (cp >= 0xf900 && cp <= 0xfaff) ||
+    (cp >= 0x3040 && cp <= 0x30ff)
+  );
+}
+
+function isHyphenChar(ch: string | undefined): boolean {
+  return ch === "-" || ch === "\u2010" || ch === "\u00AD";
+}
+
 function foldSearchText(
   text: string,
   options: SearchOptions
@@ -100,6 +126,38 @@ function foldSearchText(
   let out = "";
   const map: number[] = [];
   for (let i = 0; i < text.length;) {
+    const ch = text[i]!;
+
+    // "some-\nthing" → "something" (same as pdf.js word-break hyphens).
+    if (
+      isHyphenChar(ch) &&
+      text[i + 1] === "\n" &&
+      isLetterCp(prevCodePoint(text, i)) &&
+      isLetterCp(text.codePointAt(i + 2))
+    ) {
+      i += 2;
+      continue;
+    }
+    if (ch === "\u00AD") {
+      i += 1;
+      continue;
+    }
+
+    // Line breaks become a space so "hello world" matches across lines.
+    // CJK does not get a space (pdf.js drops the newline only).
+    if (/\s/u.test(ch)) {
+      if (ch === "\n" && isCjkCp(prevCodePoint(text, i))) {
+        i += 1;
+        continue;
+      }
+      if (out.length > 0 && !out.endsWith(" ")) {
+        out += " ";
+        map.push(i);
+      }
+      i += 1;
+      continue;
+    }
+
     const cp = text.codePointAt(i)!;
     const len = cp > 0xffff ? 2 : 1;
     let piece = text.slice(i, i + len);
@@ -110,6 +168,10 @@ function foldSearchText(
     for (let j = 0; j < piece.length; j++) map.push(i);
     out += piece;
     i += len;
+  }
+  if (out.endsWith(" ")) {
+    out = out.slice(0, -1);
+    map.pop();
   }
   map.push(text.length);
   return { text: out, map };

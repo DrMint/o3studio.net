@@ -389,14 +389,18 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     paintedSearch.push({ page: pageNumber, viewport, layer });
     layer.replaceChildren();
     if (searchForm.hidden || searchMatches.length === 0) {
-      const textRoot = layer.parentElement?.querySelector(":scope > .textLayer");
+      const textRoot = layer.parentElement?.querySelector(
+        ":scope > .textLayer"
+      );
       if (textRoot instanceof HTMLElement) clearTextLayerHighlights(textRoot);
       layer.hidden = true;
       return;
     }
     const pageIndex = pageTextCache.get(pageNumber);
     if (!pageIndex) {
-      const textRoot = layer.parentElement?.querySelector(":scope > .textLayer");
+      const textRoot = layer.parentElement?.querySelector(
+        ":scope > .textLayer"
+      );
       if (textRoot instanceof HTMLElement) clearTextLayerHighlights(textRoot);
       layer.hidden = true;
       return;
