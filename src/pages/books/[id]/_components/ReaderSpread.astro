@@ -86,6 +86,11 @@ import SearchBar from "./SearchBar.astro";
       & > #fullscreen-exit {
         display: flex;
       }
+
+      & > #spread > #spread-stage {
+        padding-inline: clamp(12px, 2vw, 28px);
+        padding-block: 0;
+      }
     }
 
     & > #spread {
@@ -104,6 +109,8 @@ import SearchBar from "./SearchBar.astro";
         height: max-content;
         /* Room for the book shadow inside the scrollport (incl. soft ambient). */
         padding: clamp(0.5rem, 5vmin, 5rem);
+        padding-bottom: clamp(0.5rem, 4vmin, 4rem);
+        padding-top: 0;
 
         & > #book-zoom-shell {
           width: max-content;
