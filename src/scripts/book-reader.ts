@@ -1305,8 +1305,8 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     // Always pin face size so zoomed pages can't flex-shrink and overlap.
     sizeFace(leftFace, leftFaceW, leftFaceH);
     sizeFace(rightFace, rightFaceW, rightFaceH);
-    randomizePaperPosition(leftFace, left);
-    randomizePaperPosition(rightFace, right);
+    randomizePaperPosition(leftStack, left);
+    randomizePaperPosition(rightStack, right);
 
     await Promise.all([
       left !== null
@@ -1543,17 +1543,22 @@ function sizeFace(face: HTMLElement, width: number, height: number) {
 }
 
 /** New paper-texture offset whenever the face shows a different page. */
-function randomizePaperPosition(face: HTMLElement, page: number | null) {
-  const key = page === null ? "" : String(page);
-  if (face.dataset.paperPage === key) return;
-  face.dataset.paperPage = key;
-  if (page === null) {
-    face.style.removeProperty("--paper-position");
+function randomizePaperPosition(stack: HTMLElement, page: number | null) {
+  // Deterministically hash the page number to derive x and y offsets (0–100%)
+  if (page == null) {
+    stack.style.setProperty("--paper-position", "0% 0%");
     return;
   }
-  const x = Math.floor(Math.random() * 100);
-  const y = Math.floor(Math.random() * 100);
-  face.style.setProperty("--paper-position", `${x}% ${y}%`);
+  // Simple hash to get predictable, page-dependent random coordinates
+  // The constants are arbitrary primes for better mixing
+  const hash = (n: number) => {
+    let x = ((n * 2654435761) & 0xffffffff) >>> 0;
+    let y = ((n * 1597334677) & 0xffffffff) >>> 0;
+    // Bring into [0,100) range as a float
+    return [Math.round(x % 10000), Math.round(y % 10000)];
+  };
+  const [x, y] = hash(page);
+  stack.style.setProperty("--paper-position", `${x}% ${y}%`);
 }
 
 function mustQuery(root: ParentNode, selector: string): HTMLElement {

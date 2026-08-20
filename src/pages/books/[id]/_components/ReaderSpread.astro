@@ -434,17 +434,16 @@ import SearchBar from "./SearchBar.astro";
   }
 
   /* Apply order: paper → tint → fold → specular */
-  .page-face::before {
-    content: "";
+  .page-paper {
     position: absolute;
     inset: 0;
     z-index: 2;
     pointer-events: none;
-    background-image: url("/paper-book.webp");
-    opacity: 0.5;
-    mix-blend-mode: exclusion;
-    background-size: 20vmin 20vmin;
+    background-image: url("/paper-book-v2.webp");
+    background-size: calc(var(--page-face-width) / 6);
     background-position: var(--paper-position, 0 0);
+    mix-blend-mode: exclusion;
+    opacity: 0.3;
   }
 
   .page-tint {
@@ -457,6 +456,10 @@ import SearchBar from "./SearchBar.astro";
   }
 
   #book[data-cover] .page-tint {
+    display: none;
+  }
+
+  #book[data-cover] .page-paper {
     display: none;
   }
 
@@ -531,6 +534,8 @@ import SearchBar from "./SearchBar.astro";
     background-size: 100% 100%;
     background-position: center;
   }
+
+  /* Book cover gradient gutters and edges */
 
   .page-face::after {
     content: "";
