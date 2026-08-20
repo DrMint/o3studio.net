@@ -8,14 +8,17 @@ import SearchBar from "./SearchBar.astro";
   <button
     type="button"
     id="fullscreen-exit"
+    class="icon-button"
     aria-label="Exit fullscreen"
     title="Exit fullscreen"
+    aria-expanded="true"
     hidden
   >
     <Icon name="fullscreen_exit" />
   </button>
   <button
     type="button"
+    class="icon-button"
     id="turn-prev"
     data-turn="prev"
     aria-label="Previous pages"
@@ -40,142 +43,128 @@ import SearchBar from "./SearchBar.astro";
       </div>
     </div>
   </div>
-  <button type="button" id="turn-next" data-turn="next" aria-label="Next pages">
+  <button
+    type="button"
+    class="icon-button"
+    id="turn-next"
+    data-turn="next"
+    aria-label="Next pages"
+  >
     <Icon name="chevron_right" size="2rem" />
   </button>
   <SearchBar />
 </div>
 
-<style is:global>
+<style>
   #spread-area {
     position: relative;
     min-height: 0;
     overflow: hidden;
     touch-action: pan-x pan-y;
+
+    & > #fullscreen-exit {
+      position: absolute;
+      top: clamp(12px, 2vw, 28px);
+      right: clamp(12px, 2vw, 28px);
+      z-index: 6;
+      display: none;
+    }
+
+    &:fullscreen {
+      box-sizing: border-box;
+      width: 100%;
+      height: 100%;
+      background-image:
+        url("/paper2.webp"),
+        radial-gradient(circle at top, white, rgb(0 0 0 / 0.2));
+      background-blend-mode: multiply;
+      background-size:
+        25cm,
+        100% 100%;
+      background-repeat: round, no-repeat;
+
+      & > #fullscreen-exit {
+        display: flex;
+      }
+    }
+
+    & > #spread {
+      position: absolute;
+      inset: 0;
+      overflow: auto;
+      touch-action: pan-x pan-y;
+
+      & > #spread-stage {
+        box-sizing: border-box;
+        display: grid;
+        place-items: center;
+        min-width: 100%;
+        min-height: 100%;
+        width: max-content;
+        height: max-content;
+        /* Room for the book shadow inside the scrollport (incl. soft ambient). */
+        padding: clamp(0.5rem, 5vmin, 5rem);
+
+        & > #book-zoom-shell {
+          width: max-content;
+          height: max-content;
+          line-height: 0;
+        }
+      }
+    }
+
+    & > #turn-prev,
+    & > #turn-next {
+      position: absolute;
+      top: 50%;
+      z-index: 5;
+      transform: translateY(-50%);
+    }
+
+    & > #turn-prev {
+      left: clamp(12px, 2vw, 28px);
+    }
+
+    & > #turn-next {
+      right: clamp(12px, 2vw, 28px);
+    }
   }
 
-  #spread-area:fullscreen {
+  .icon-button {
     box-sizing: border-box;
-    width: 100%;
-    height: 100%;
-    background-image:
-      url("/paper2.webp"),
-      radial-gradient(circle at top, white, rgb(0 0 0 / 0.2));
-    background-blend-mode: multiply;
-    background-size:
-      25cm,
-      100% 100%;
-    background-repeat: round, no-repeat;
-  }
-
-  #fullscreen-exit {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
     width: 50px;
     height: 50px;
     border: 3px solid var(--dark-color);
     background: white;
     color: var(--dark-color);
-    font: inherit;
-    line-height: 1;
     cursor: pointer;
-    user-select: none;
-    display: none;
-    position: absolute;
-    top: clamp(12px, 2vw, 28px);
-    right: clamp(12px, 2vw, 28px);
-    z-index: 6;
+    display: flex;
     align-items: center;
     justify-content: center;
-  }
 
-  #fullscreen-exit:hover,
-  #fullscreen-exit:focus-visible {
-    background: var(--dark-color);
-    color: white;
-  }
+    :global(svg) {
+      width: 28px;
+      height: 28px;
+    }
 
-  #spread-area:fullscreen #fullscreen-exit {
-    display: inline-flex;
-  }
+    &:disabled {
+      cursor: not-allowed;
 
-  #turn-prev,
-  #turn-next {
-    position: absolute;
-    top: 50%;
-    z-index: 5;
-    transform: translateY(-50%);
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    width: 50px;
-    height: 50px;
-    border: 3px solid var(--dark-color);
-    background: white;
-    color: var(--dark-color);
-    font: inherit;
-    line-height: 1;
-    cursor: pointer;
-    user-select: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
+      & > :global(svg) {
+        opacity: 0.35;
+      }
+    }
 
-  #turn-prev {
-    left: clamp(12px, 2vw, 28px);
+    &:hover:not(:disabled),
+    &:focus-visible:not(:disabled),
+    &[aria-expanded="true"]:not(:disabled) {
+      background: var(--dark-color);
+      color: white;
+    }
   }
+</style>
 
-  #turn-next {
-    right: clamp(12px, 2vw, 28px);
-  }
-
-  #turn-prev:hover,
-  #turn-next:hover,
-  #turn-prev:focus-visible,
-  #turn-next:focus-visible {
-    background: var(--dark-color);
-    color: white;
-  }
-
-  #turn-prev:disabled,
-  #turn-next:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-  }
-
-  #turn-prev:disabled:hover,
-  #turn-next:disabled:hover {
-    background: white;
-    color: var(--dark-color);
-  }
-
-  #spread {
-    position: absolute;
-    inset: 0;
-    overflow: auto;
-    touch-action: pan-x pan-y;
-  }
-
-  #spread-stage {
-    box-sizing: border-box;
-    display: grid;
-    place-items: center;
-    min-width: 100%;
-    min-height: 100%;
-    width: max-content;
-    height: max-content;
-    /* Room for the book shadow inside the scrollport (incl. soft ambient). */
-    padding: clamp(0.5rem, 5vmin, 5rem);
-  }
-
-  #book-zoom-shell {
-    width: max-content;
-    height: max-content;
-    line-height: 0;
-  }
-
+<style is:global>
   #book {
     position: relative;
     display: flex;

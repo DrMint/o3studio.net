@@ -215,6 +215,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   ) as HTMLDialogElement;
   const shortcutsCloseBtn = mustQuery(root, "[data-shortcuts-close]");
   const spreadArea = mustQuery(root, "#spread-area");
+  const searchOpenBtn = mustQuery(root, "#search-open") as HTMLButtonElement;
   const searchForm = mustQuery(root, "#reader-search") as HTMLFormElement;
   const searchInput = mustQuery(
     root,
@@ -319,10 +320,12 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
 
   function openShortcuts() {
     if (!shortcutsDialog.open) shortcutsDialog.showModal();
+    shortcutsOpenBtn.setAttribute("aria-expanded", "true");
   }
 
   function closeShortcuts() {
     if (shortcutsDialog.open) shortcutsDialog.close();
+    shortcutsOpenBtn.setAttribute("aria-expanded", "false");
   }
 
   function toggleShortcuts() {
@@ -334,6 +337,9 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   shortcutsCloseBtn.addEventListener("click", () => closeShortcuts());
   shortcutsDialog.addEventListener("click", (event) => {
     if (event.target === shortcutsDialog) closeShortcuts();
+  });
+  shortcutsDialog.addEventListener("close", () => {
+    shortcutsOpenBtn.setAttribute("aria-expanded", "false");
   });
 
   const pageTextCache = new Map<number, PageTextIndex>();
@@ -539,6 +545,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
   function openSearch() {
     closeShortcuts();
     searchForm.hidden = false;
+    searchOpenBtn.setAttribute("aria-expanded", "true");
     searchInput.focus();
     searchInput.select();
     if (searchInput.value.trim() && searchMatches.length === 0) {
@@ -551,10 +558,16 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     searchTimer = undefined;
     searchGen++;
     searchForm.hidden = true;
+    searchOpenBtn.setAttribute("aria-expanded", "false");
     searchMatches = [];
     searchActive = 0;
     syncSearchCount();
     refreshSearchHighlights();
+  }
+
+  function toggleSearch() {
+    if (searchForm.hidden) openSearch();
+    else closeSearch();
   }
 
   searchForm.addEventListener("submit", (event) => {
@@ -574,6 +587,7 @@ export async function initBookReader(root: HTMLElement): Promise<void> {
     void goToSearchMatch(searchActive + 1);
   });
   searchCloseBtn.addEventListener("click", () => closeSearch());
+  searchOpenBtn.addEventListener("click", () => toggleSearch());
   for (const box of [
     searchMatchCase,
     searchMatchDiacritics,

@@ -33,12 +33,12 @@ const innerCover = await getImage({
 });
 ---
 
-<Html>
+<Html title={`${book.data.title} - ${book.data.subtitle}`}>
   <div
     id="reader"
     data-book-id={book.id}
     data-pdf-url={readerPdfUrl}
-    style={`--light-color: ${book.data.lightColor}; --dark-color: ${book.data.darkColor}; --track-color: ${book.data.trackColor}; --cover-image: url(${JSON.stringify(innerCover.src)})`}
+    style={`--light-color: ${book.data.lightColor}; --dark-color: ${book.data.darkColor}; --cover-image: url(${JSON.stringify(innerCover.src)})`}
   >
     <ReaderToolbar book={book} downloadPdfUrl={downloadPdfUrl} />
     <ChapterScrubber />

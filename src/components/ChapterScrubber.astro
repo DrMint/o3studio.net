@@ -29,6 +29,7 @@
     padding-inline: clamp(12px, 2vw, 28px);
     position: relative;
     z-index: 3;
+    mix-blend-mode: multiply;
   }
 
   .chapter-scrubber {
@@ -69,7 +70,7 @@
     min-width: 2px;
     overflow: hidden;
     border-radius: 2px;
-    background: var(--track-color);
+    background: var(--light-color);
   }
 
   .chapter-scrubber :global(.chapter-scrubber-segment::before) {

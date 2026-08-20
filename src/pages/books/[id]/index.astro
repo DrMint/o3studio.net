@@ -29,16 +29,13 @@ const { Content: SeriesContent } = await render(series);
 const pdfUrl = `/pdf/download/${book.id}.pdf`;
 ---
 
-<Html>
+<Html title={`${book.data.title} - ${book.data.subtitle}`}>
   <div id="page">
     <Button href="/" color={book.data.darkColor}>
       <Icon name="arrow_back" />
       Go back
     </Button>
-    <div
-      id="layout"
-      style={`--light-color: ${book.data.lightColor}; --dark-color: ${book.data.darkColor}`}
-    >
+    <div id="layout" style={`--dark-color: ${book.data.darkColor}`}>
       <div id="left">
         <BookCover
           lightingX={-0.5}
@@ -167,7 +164,7 @@ const pdfUrl = `/pdf/download/${book.id}.pdf`;
 
       & > #series-card {
         background-color: white;
-        border: 3px solid var(--light-color);
+        border: 3px solid var(--dark-color);
         width: fit-content;
         max-width: 70ch;
         padding: 1.5em;

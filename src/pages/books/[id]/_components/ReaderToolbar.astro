@@ -1,6 +1,5 @@
 ---
 import type { CollectionEntry } from "astro:content";
-import Button from "../../../../components/Button.astro";
 import Icon from "../../../../components/Icon.astro";
 
 interface Props {
@@ -11,61 +10,108 @@ interface Props {
 const { book, downloadPdfUrl } = Astro.props;
 ---
 
-<header id="toolbar">
-  <Button href={`/books/${book.id}`} color={book.data.darkColor}>
-    <Icon name="arrow_back" />
-    Go back
-  </Button>
-  <div id="titles">
-    <h1 id="book-title">
-      {book.data.title}
-    </h1>
-    <p id="book-subtitle">{book.data.subtitle}</p>
+<header>
+  <div>
+    <a
+      class="icon-button"
+      href={`/books/${book.id}`}
+      aria-label="Go back"
+      title="Go back"
+    >
+      <Icon name="arrow_back" />
+    </a>
+    <div>
+      <h1>
+        {book.data.title}
+      </h1>
+      <p>{book.data.subtitle}</p>
+    </div>
   </div>
-  <div id="toolbar-actions">
+
+  <div>
+    <a
+      href={downloadPdfUrl}
+      class="icon-button"
+      id="download-pdf"
+      download={`${book.id}.pdf`}
+      aria-label="Download PDF"
+      title="Download PDF"
+    >
+      <Icon name="download" />
+    </a>
+
+    <button
+      type="button"
+      class="icon-button"
+      id="search-open"
+      aria-label="Find in book"
+      title="Find in book"
+      aria-controls="reader-search"
+      aria-expanded="false"
+    >
+      <Icon name="search" />
+    </button>
+
+    <button
+      type="button"
+      class="icon-button"
+      id="shortcuts-open"
+      aria-label="Keyboard shortcuts"
+      title="Keyboard shortcuts"
+      aria-controls="shortcuts-dialog"
+      aria-expanded="false"
+    >
+      <Icon name="keyboard-command-key" />
+    </button>
+  </div>
+
+  <div>
     <label id="page-jump">
-      <span>Page</span>
       <input
         type="number"
         data-page-input
         min="1"
         value="1"
+        size="3"
         inputmode="numeric"
       />
       <span data-page-count></span>
     </label>
     <div id="zoom-controls">
-      <button type="button" data-zoom-out aria-label="Zoom out">
+      <button
+        type="button"
+        class="icon-button"
+        aria-label="Zoom out"
+        title="Zoom out"
+        data-zoom-out
+      >
         <Icon name="zoom_out" />
       </button>
-      <button type="button" data-zoom-reset>
+      <button
+        type="button"
+        aria-label="Reset zoom"
+        title="Reset zoom"
+        class="icon-button"
+        data-zoom-reset
+      >
         <span data-zoom-label>100%</span>
       </button>
-      <button type="button" data-zoom-in aria-label="Zoom in">
+      <button
+        type="button"
+        aria-label="Zoom in"
+        title="Zoom in"
+        data-zoom-in
+        class="icon-button"
+      >
         <Icon name="zoom_in" />
       </button>
     </div>
-    <Button
-      href={downloadPdfUrl}
-      download={`${book.id}.pdf`}
-      color={book.data.darkColor}
-    >
-      <Icon name="download" />
-      Download
-    </Button>
     <button
       type="button"
-      id="shortcuts-open"
-      aria-label="Keyboard shortcuts"
-      title="Keyboard shortcuts"
-    >
-      <Icon name="keyboard-command-key" />
-    </button>
-    <button
-      type="button"
+      class="icon-button"
       id="fullscreen-enter"
-      aria-label="Fullscreen"
-      title="Fullscreen"
+      aria-label="Enter fullscreen"
+      title="Enter fullscreen"
     >
       <Icon name="fullscreen" />
     </button>
@@ -73,149 +119,133 @@ const { book, downloadPdfUrl } = Astro.props;
 </header>
 
 <style>
-  #toolbar {
+  header {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.75rem 1.25rem;
+    justify-content: space-between;
     min-width: 0;
     padding: clamp(12px, 2vw, 28px);
     padding-bottom: 0;
-  }
 
-  #titles {
-    min-width: 0;
-    color: var(--dark-color);
-  }
+    @media (max-width: 740px) {
+      gap: 0.75rem 1rem;
+      justify-content: center;
+    }
 
-  @media (max-width: 1400px) {
-    #titles {
-      display: none;
+    & > div {
+      display: flex;
+      gap: 0.75rem 1rem;
+      align-items: center;
+
+      /* Go back and book title */
+      &:nth-child(1) {
+        color: var(--dark-color);
+
+        & > a > :global(svg) {
+          width: 30px;
+          height: 30px;
+        }
+
+        & > div {
+          & > h1 {
+            margin: 0;
+            font-size: 1.15rem;
+            font-weight: 700;
+            line-height: 1.2;
+          }
+
+          & > p {
+            font-size: 0.9rem;
+            margin: 0;
+          }
+
+          @media (max-width: 1400px) {
+            display: none;
+          }
+        }
+      }
+
+      /* Navigation controls */
+      &:nth-child(3) {
+        & > #page-jump {
+          box-sizing: border-box;
+          height: 50px;
+          padding: 0 0.5em;
+          border: 3px solid var(--dark-color);
+          background: white;
+          color: var(--dark-color);
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          font-size: 1.3rem;
+
+          & > input {
+            border: 0;
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            font-weight: inherit;
+            text-align: right;
+            width: 5ch;
+          }
+        }
+
+        & > #zoom-controls {
+          box-sizing: border-box;
+          display: flex;
+          align-items: stretch;
+          height: 50px;
+          background: white;
+          color: var(--dark-color);
+
+          & > button {
+            & ~ button {
+              border-left: 0;
+            }
+
+            /* Reset zoom button */
+            &:nth-child(2) {
+              min-width: 4em;
+              font-weight: 600;
+              font-size: 1.3rem;
+            }
+          }
+        }
+      }
     }
   }
 
-  #toolbar-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.75rem 2rem;
-    margin-left: auto;
-  }
-
-  #toolbar :global(a) {
+  .icon-button {
     box-sizing: border-box;
-    height: 50px;
-    padding-block: 0;
-  }
-
-  #page-jump {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    color: var(--dark-color);
-    font-weight: 600;
-    font-size: 1.3rem;
-  }
-
-  #page-jump input {
-    box-sizing: border-box;
-    height: 50px;
-    max-width: 8ch;
-    margin: 0;
-    padding: 0 0.45em;
-    border: 3px solid var(--dark-color);
-    background: white;
-    color: var(--dark-color);
-    font: inherit;
-    font-weight: 600;
-    text-align: center;
-  }
-
-  #zoom-controls {
-    box-sizing: border-box;
-    display: flex;
-    align-items: stretch;
-    height: 50px;
-    border: 3px solid var(--dark-color);
-    background: white;
-    color: var(--dark-color);
-    font-size: 26px;
-  }
-
-  #zoom-controls > button {
-    margin: 0;
-    padding: 0 0.65em;
-    border: 0;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    font-weight: 700;
-    line-height: 1;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  #zoom-controls > button:hover,
-  #zoom-controls > button:focus-visible {
-    background: var(--dark-color);
-    color: white;
-  }
-
-  #zoom-controls > [data-zoom-reset] {
-    min-width: 4.5em;
-    border-inline: 3px solid var(--dark-color);
-    font-weight: 600;
-    font-size: 1.2rem;
-  }
-
-  #zoom-controls > button:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-  }
-
-  #zoom-controls > button:disabled:hover {
-    background: transparent;
-    color: inherit;
-  }
-
-  #book-title {
-    margin: 0;
-    font-size: 1.15rem;
-    font-weight: 700;
-    line-height: 1.2;
-  }
-
-  #book-subtitle {
-    font-size: 0.9rem;
-    margin: 0;
-  }
-
-  #fullscreen-enter,
-  #shortcuts-open {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
     width: 50px;
     height: 50px;
     border: 3px solid var(--dark-color);
     background: white;
     color: var(--dark-color);
-    font: inherit;
-    line-height: 1;
     cursor: pointer;
-    user-select: none;
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
-  }
 
-  #fullscreen-enter:hover,
-  #fullscreen-enter:focus-visible,
-  #shortcuts-open:hover,
-  #shortcuts-open:focus-visible {
-    background: var(--dark-color);
-    color: white;
+    :global(svg) {
+      width: 28px;
+      height: 28px;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+
+      & > :global(svg) {
+        opacity: 0.35;
+      }
+    }
+
+    &:hover:not(:disabled),
+    &:focus-visible:not(:disabled),
+    &[aria-expanded="true"]:not(:disabled) {
+      background: var(--dark-color);
+      color: white;
+    }
   }
 </style>

@@ -20,6 +20,7 @@ export default defineConfig({
           "keyboard-command-key",
           "keyboard-arrow-up",
           "keyboard-arrow-down",
+          "search",
         ],
       },
     }),
