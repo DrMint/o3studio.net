@@ -6,7 +6,6 @@ import ChapterScrubber from "../../../components/ChapterScrubber.astro";
 import ReaderToolbar from "./_components/ReaderToolbar.astro";
 import ReaderSpread from "./_components/ReaderSpread.astro";
 import ShortcutsDialog from "./_components/ShortcutsDialog.astro";
-import SearchBar from "./_components/SearchBar.astro";
 import SmallScreenOverlay from "./_components/SmallScreenOverlay.astro";
 
 export async function getStaticPaths() {
@@ -45,7 +44,6 @@ const innerCover = await getImage({
     <ChapterScrubber />
     <ReaderSpread />
     <ShortcutsDialog />
-    <SearchBar />
     <SmallScreenOverlay book={book} downloadPdfUrl={downloadPdfUrl} />
   </div>
 </Html>

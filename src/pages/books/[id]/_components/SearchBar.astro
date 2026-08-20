@@ -40,13 +40,14 @@ import Icon from "../../../../components/Icon.astro";
 
 <style>
   #reader-search {
-    position: fixed;
+    /* Absolute within #spread-area so it stays visible in fullscreen. */
+    position: absolute;
     z-index: 15;
     left: 50%;
     bottom: clamp(12px, 2vw, 28px);
     transform: translateX(-50%);
     box-sizing: border-box;
-    width: min(42rem, calc(100vw - 2rem));
+    width: min(42rem, calc(100% - 2rem));
     padding: 0.7rem 0.85rem 0.75rem;
     border: 3px solid var(--dark-color);
     background: white;

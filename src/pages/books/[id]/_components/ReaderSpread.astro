@@ -1,6 +1,7 @@
 ---
 import Icon from "../../../../components/Icon.astro";
 import ReaderPage from "./ReaderPage.astro";
+import SearchBar from "./SearchBar.astro";
 ---
 
 <div id="spread-area">
@@ -42,6 +43,7 @@ import ReaderPage from "./ReaderPage.astro";
   <button type="button" id="turn-next" data-turn="next" aria-label="Next pages">
     <Icon name="chevron_right" size="2rem" />
   </button>
+  <SearchBar />
 </div>
 
 <style is:global>
