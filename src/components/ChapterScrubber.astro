@@ -27,9 +27,6 @@
     display: block;
     min-width: 0;
     padding-inline: clamp(12px, 2vw, 28px);
-    position: relative;
-    z-index: 3;
-    mix-blend-mode: multiply;
   }
 
   .chapter-scrubber {
@@ -61,7 +58,7 @@
   .chapter-scrubber:hover .chapter-scrubber-track,
   .chapter-scrubber.is-dragging .chapter-scrubber-track,
   .chapter-scrubber:focus-visible .chapter-scrubber-track {
-    height: 10px;
+    height: 12px;
   }
 
   .chapter-scrubber :global(.chapter-scrubber-segment) {
@@ -69,14 +66,22 @@
     flex: 1 1 0;
     min-width: 2px;
     overflow: hidden;
-    border-radius: 2px;
+    border-radius: 3px;
+  }
+
+  .chapter-scrubber :global(.chapter-scrubber-segment::after) {
+    content: "";
+    position: absolute;
+    inset: 0;
     background: var(--light-color);
+    mix-blend-mode: multiply;
   }
 
   .chapter-scrubber :global(.chapter-scrubber-segment::before) {
     content: "";
     position: absolute;
     inset: 0 auto 0 0;
+    z-index: 1;
     width: calc(var(--played, 0) * 100%);
     background: var(--dark-color);
   }
@@ -86,8 +91,8 @@
     top: 50%;
     left: calc(var(--scrubber-progress) * 100%);
     z-index: 1;
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
     margin-left: -7px;
     border-radius: 50%;
     background: var(--dark-color);
@@ -109,7 +114,7 @@
     position: absolute;
     left: var(--tooltip-x, 50%);
     top: calc(100% + 6px);
-    z-index: 2;
+    z-index: 10;
     display: flex;
     flex-direction: column;
     gap: 0.1em;
