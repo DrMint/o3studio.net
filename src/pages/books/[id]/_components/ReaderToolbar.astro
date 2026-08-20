@@ -31,14 +31,13 @@ const { book, downloadPdfUrl } = Astro.props;
   <div>
     <label id="page-jump">
       <input
-        type="number"
+        type="text"
         data-page-input
-        min="1"
         value="1"
         size="3"
         inputmode="numeric"
       />
-      <span data-page-count></span>
+      <span data-page-count>/</span>
     </label>
     <div id="zoom-controls">
       <button
@@ -125,7 +124,6 @@ const { book, downloadPdfUrl } = Astro.props;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    min-width: 0;
     padding: clamp(12px, 2vw, 28px);
     padding-bottom: 0;
 
@@ -172,7 +170,7 @@ const { book, downloadPdfUrl } = Astro.props;
         & > #page-jump {
           box-sizing: border-box;
           height: 50px;
-          padding: 0 0.5em;
+          padding: 0 0.8em;
           border: 3px solid var(--dark-color);
           background: white;
           color: var(--dark-color);
@@ -183,12 +181,17 @@ const { book, downloadPdfUrl } = Astro.props;
 
           & > input {
             border: 0;
+            width: 3ch;
+            text-align: right;
             background: transparent;
             color: inherit;
             font: inherit;
             font-weight: inherit;
-            text-align: center;
-            width: 5ch;
+            margin-right: 0.2em;
+          }
+
+          & > span {
+            min-width: 4.2ch;
           }
         }
 
